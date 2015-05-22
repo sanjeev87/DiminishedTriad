@@ -67,10 +67,12 @@ then
         redis-cli -p $PORT shutdown nosave
     done
 
-    while [ $((SPORT < ENDPORT + SENTINELOFFSET)) != "0" ]; do
+    # sentinels can't be killed regularly. Ctrl-C looks like the only way for now..
+    SPORT=$((PORT+SENTINELOFFSET))
+    # while [ $((SPORT < ENDPORT + SENTINELOFFSET)) != "0" ]; do
         SPORT=$((SPORT+1))
         redis-cli -p $SPORT shutdown
-    done
+    # done
     exit 0
 fi
 
