@@ -26,6 +26,30 @@ def push_to_server(cmd, args, addr = server_addrs[0]):
         except:
             print "No response from ", saddr
             continue
+def get_server_list(args):
+    print server_addrs
+
+def update_server_addrs(args):
+    global server_addrs
+    cmd = "getServersList"
+    result = None
+    for saddr in server_addrs:
+        try:
+            addr = add_portval(saddr)
+            url = "http://" + addr + '/' + cmd
+            print "POST. Request:" + url
+            response = urllib2.urlopen(url, timeout = 2)
+            result = response.read()
+            if result is not None: break
+        except:
+            print "No response from ", saddr
+            continue
+    if result is not None:
+        print "Response:" + result
+        server_addrs = []
+        for s in result.split(','):
+            server_addrs.append(s[1:-1])
+        print "updated: ", server_addrs
 
 def get_key(args):
     key = args[0]
@@ -64,7 +88,7 @@ def show_usage(args):
     for i in sorted(CMD.keys()): print i
     print "type quit or q to exit"
 
-CMD = {"get": get_key, "set":set_key, "append":append, "lpush":lPush,"lpop" :lPop, "lindex":lIndex, "strlen":strlen, "llen":llen, "help":show_usage}
+CMD = {"get": get_key, "set":set_key, "append":append, "lpush":lPush,"lpop" :lPop, "lindex":lIndex, "strlen":strlen, "llen":llen, "up":update_server_addrs, "ss":get_server_list, "help":show_usage}
 
 
 def process_cmd(usrcmd):
