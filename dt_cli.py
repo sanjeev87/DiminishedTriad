@@ -2,6 +2,7 @@ import sys
 from sys import stdin
 import urllib2
 import urllib
+import socket
 
 SERVER_OFFSET = 20000
 
@@ -12,14 +13,19 @@ def add_portval(addr, x=SERVER_OFFSET):
     return ip + ":" + str(int(port)+x)
 
 def push_to_server(cmd, args, addr = server_addrs[0]):
-    addr = add_portval(addr)
-    url = "http://" + addr + '/' + cmd + '?'
     data = urllib.urlencode(args)
-    response = urllib2.urlopen(url+data)
-    print "POST Request:" + url+data
-    result = response.read()
-    print "Response:" + result
-    return result
+    for saddr in server_addrs:
+        try:
+            addr = add_portval(saddr)
+            url = "http://" + addr + '/' + cmd + '?'
+            response = urllib2.urlopen(url+data, timeout = 2)
+            print "POST Request:" + url+data
+            result = response.read()
+            print "Response:" + result
+            return result
+        except:
+            print "No response from ", saddr
+            continue
 
 def get_key(args):
     key = args[0]
