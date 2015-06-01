@@ -29,10 +29,10 @@
 \title{Consistent Hashing in Redis}
 
 %% TODO: Have to figure out how to add multiple authors
-\author{Manindra Kumar Moharan\\
+\author{Pallavi Agarwal, Manindra Kumar Moharana, Sanjeev Jagannatha Rao\\
 University of California, San Diego\\
 %\small PID: A53068263\\
-\small mmoharana@ucsd.edu}
+\small p1agarwa,mmoharana,sjrao@ucsd.edu}
 
 % For a paper whose authors are all at the same institution,
 % omit the following lines up until the closing ``}''.
@@ -46,9 +46,16 @@ University of California, San Diego\\
 
 
 %%%%%%%%% BODY TEXT
-\section{Introduction}
+\section{Abstract}
+Diminished Triad is a (partial) diminished implementation of chord by the three authors on Redis backends. Redis is an open source, BSD licensed, advanced key-value cache and store.
+While Redis offers an extremely fast key value cache, its design suffers from some major drawbacks. Redis does not support consistent hashing, the slaves of a particular master are only aware of the master that they are replicating and unaware of the state of the rest of the system. Redis also does not support automatic migration of keys when a new node joins or readjustment of responsibilities when a node fails. Diminished Triad aims to address these drawbacks of Redis at the cost of an additional layer of indirection and its associated overheads.
 
-Convolutional neural networks are a special kind of neural network designed for  2D image input. They've become very popular lately for image classification related tasks, outperforming other state of the art methods such as random forests and SVM. In this project I trained CNNs for classifying images in the CIFAR-10 dataset.
+\section{Introduction}
+"Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{http://redis.io/topics/introduction} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has k backups, it can support at most r+1 random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
+
+In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the dataset to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
+
+In Diminished Triad (DT), we hope to provide a fault tolerant systems using Redis backends that improves on several drawbacks of the existing Redis system described earlier. The DT system follows a consistent hashing system similar to Chord \cite{Chord}. It hashes every backed to a position on the ring. Each node is the master for all the keys that hash between its predecessor and itself. All the data that a node is responsible for ( keys for which it is the master ) is replicated in the r nodes that follow it on the ring. Every node is a master for some of the keys and is a backup for r additional nodes. Every time a node joins or leaves the system, they keys are redistributed to maintain this key ownership invariant and maintain r replicas for each master node.
 
 \section{Dataset}
 The CIFAR-10 dataset \cite{krizhevsky2009learning} consists of 60000 32x32 images belonging to 10 classes with 6000 images per class.	The training set consists of 50000 images and the test set consists of 10000 images. The classes are mutually exclusive with almost no overlap between images.
