@@ -196,17 +196,17 @@ class DiminishedTriadService(ServiceBase):
 
     @srpc(_returns=Unicode)
     def getKeyDist():
-        addrs = hash_to_back_map.keys()
-        addrs = sorted(addrs)
-        out = ""
-        for i in range(len(addrs)):
-#             keys = getKeysInRange(source_addr,addr1,addr2)
-            keys = getKeysInRange(addrs[i],addrs[(i-1)%len(addrs)],addrs[i])
-            out += addrs[i] + "-" + len(keys)
-            if i != (len(addrs) - 1):
-                out += ","
-        print "getKeyDist returning : {",out,"}"
-        return out
+       
+       addrs = [hash_to_back_map[k] for k in sorted(hash_to_back_map.keys())]
+       out = ""
+       for i in range(len(addrs)):
+    #             keys = getKeysInRange(source_addr,addr1,addr2)
+           keys = getKeysInRange(addrs[i],addrs[(i-1)%len(addrs)],addrs[i])
+           out += addrs[i] + "-" + str(len(keys))
+           if i != (len(addrs) - 1):
+               out += ","
+       print "getKeyDist returning : {",out,"}"
+       return out
 
 
 
@@ -235,6 +235,11 @@ hash_to_back_map = {
 back_to_redis_map = {
                             "127.0.0.1:30001":redis.StrictRedis(host="127.0.0.1", port=30001, db=0)
                     }
+def getKeysInMaster(back):
+    addr = back.split(":")[0]
+    port = back.split(":")[1]
+    r = redis.StrictRedis(host=addr, port=port, db=0)
+    return r.keys("*")
 
 def getKeysInRange(source_addr,addr1,addr2):
     # copy keys in range from addr1+1 till addr2 from source_addr
@@ -251,7 +256,8 @@ def getKeysInRange(source_addr,addr1,addr2):
     return out
 
 def updateAOFPATH():
-    AOFPATH = "create-multiredis/appendonly-" + str(REDIS_PORT) + ".aof"
+    # AOFPATH = "create-multiredis/appendonly-" + str(REDIS_PORT) + ".aof"
+    AOFPATH = "appendonly-" + str(REDIS_PORT) + ".aof"
 
 def getNextNBackends(key):
     try:

@@ -24,10 +24,6 @@ def startSentinelListner():
 
     for message in p.listen():
         handleMessage(message)
-        
-dtSentinelInit()
-startSentinelListner()
-
 
 # In[ ]:
 
@@ -45,10 +41,11 @@ def dtSentinelInit():
     global LOG_FILE
     global LOG_WRITER
     REDIS_SENTINEL = redis.StrictRedis(host='localhost', port=40001)
-    print REDIS_SENTINEL.sentinel_masters().keys()
+    # print REDIS_SENTINEL.sentinel_masters().keys()
     HASH_TO_BACK_MAP = {}
     updateHashToBackMap()
-    REDIS_SENTINEL.sentinel_masters()['masterP_30001']['ip']
+    # print REDIS_SENTINEL.sentinel_masters()
+    print HASH_TO_BACK_MAP.values()
     MSG_QUEUE = Queue.Queue(maxsize=50)
     LOG_FILE = open(getLogFileName(), 'w')
     LOG_WRITER = csv.writer(LOG_FILE, delimiter=',')
@@ -164,9 +161,7 @@ def getMastersList():
 def sendMasterList(ml = HASH_TO_BACK_MAP.values() if HASH_TO_BACK_MAP else None):
     for url in ml:
         ip,port = url.split(':')
-        if port == '30001':
-            sendListAsPost('http://'+ip+':'+str(int(port) + 20000), ml)
-            break
+        sendListAsPost('http://'+ip+':'+str(int(port) + 20000), ml)
 
 def handleJoin(msg):
     arr = msg['data'].split(" ")
@@ -264,23 +259,28 @@ def handleMessage(message):
     print message['data'], t
     if t == '+sdown':
         handleLeave(message)
-    elif t == '-sdown':
+    elif t == '-sdown' or t == '+monitor':
         handleJoin(message)
     else:
 #         print "Unknown channel message:", message
         t = None
 def sendListAsPost(url, slist):
-    url = url + '/update_hash_to_back_map?'
-    print url, slist
-    s = ''
-    for i in slist: s = s + ',' + i
-    s = s[1:]
-    data = urllib.urlencode({'addrs' : s})
-#     print 'encoded data', data
-    response = urllib2.urlopen(url+data)
-    print "POST Request:" + url+data
-    result = response.read()
-    return result
+    try:
+        url = url + '/update_hash_to_back_map?'
+        print url, slist
+        s = ''
+        for i in slist: s = s + ',' + i
+        s = s[1:]
+        data = urllib.urlencode({'addrs' : s})
+    #     print 'encoded data', data
+        print "Trying to POST Request:" + url+data
+        response = urllib2.urlopen(url+data)
+        
+        result = response.read()
+        return result
+    except:
+        print "Failed to update:",url
+        return ""
     
 def sanitizeString(resp):
     resp = resp.replace('\"', '')
@@ -336,6 +336,8 @@ def writeLog(*args):
     LOG_FILE.flush()
     
 
+dtSentinelInit()
+startSentinelListner()
 
 # In[ ]:
 
