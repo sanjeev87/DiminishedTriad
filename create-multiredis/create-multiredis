@@ -17,6 +17,19 @@ fi
 # Computed vars
 ENDPORT=$((PORT+NODES))
 
+if [ "$1" == "startall" ]
+then
+    while [ $((PORT < ENDPORT)) != "0" ]; do
+        PORT=$((PORT+1))
+        echo "Starting $PORT"
+        redis-server --port $PORT --appendonly yes --appendfilename appendonly-${PORT}.aof --dbfilename dump-${PORT}.rdb --logfile ${PORT}.log --daemonize yes --loglevel verbose
+	SPORT=$((PORT+20000))
+        echo "Starting $SPORT"
+    	host=localhost port=$SPORT runipy ../dt_server.ipynb &> /dev/null &
+	done
+    exit 0
+fi
+
 if [ "$1" == "start" ]
 then
     while [ $((PORT < ENDPORT)) != "0" ]; do
@@ -27,6 +40,18 @@ then
     exit 0
 fi
 
+
+if [ "$1" == "sstart" ]
+then
+	SPORT=$((PORT+20000))
+	SENDPORT=$((ENDPORT+20000))
+    while [ $((SPORT < SENDPORT)) != "0" ]; do
+        SPORT=$((SPORT+1))
+        echo "Starting $SPORT"
+    	host=localhost port=$SPORT runipy ../dt_server.ipynb &> /dev/null &
+	done
+    exit 0
+fi
 
 if [ "$1" == "sentinel" ]
 then
@@ -58,6 +83,17 @@ fi
 #     ../../src/redis-trib.rb create --replicas $REPLICAS $HOSTS
 #     exit 0
 # fi
+
+if [ "$1" == "sstop" ]
+then
+SPORT=$((PORT+20000))
+SENDPORT=$((ENDPORT+20000))
+    while [ $((SPORT < SENDPORT)) != "0" ]; do
+        SPORT=$((SPORT+1))
+        echo "Stopping $SPORT"
+        kill `lsof -t -i:$SPORT`
+    done
+fi
 
 if [ "$1" == "stop" ]
 then
