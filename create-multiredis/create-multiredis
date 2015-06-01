@@ -116,6 +116,14 @@ SENDPORT=$((ENDPORT+20000))
 exit 0
 fi
 
+
+
+if [ "$1" == "stopsentinel" ]
+then
+    redis-cli -p 40001 shutdown
+    exit 0
+fi
+
 if [ "$1" == "stop" ]
 then
     while [ $((PORT < ENDPORT)) != "0" ]; do
