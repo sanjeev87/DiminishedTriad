@@ -1,5 +1,3 @@
 
 #!/bin/bash
-
-whoami
-pwd
+ifconfig eth0
