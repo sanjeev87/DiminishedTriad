@@ -26,7 +26,7 @@
 \begin{document}
 
 %%%%%%%%% TITLE
-\title{Consistent Hashing in Redis}
+\title{Diminished Triad : Consistent Hashing in Redis}
 
 %% TODO: Have to figure out how to add multiple authors
 \author{Pallavi Agarwal, Manindra Kumar Moharana, Sanjeev Jagannatha Rao\\
@@ -72,12 +72,35 @@ We first define several terms that will be helpful in describing the system.
 \begin{enumerate}
   \item User/Client - A user or a client is the customer for the Diminished Triad service. For example, a client requests to set values for some keys, get values etc.
   \item DTServer - All requests like get and set are made by the client to the DTServer. The DTServer then forwards the request to the appropriate backends that are responsible for the key being queried through the DTClient
-  \item DTClient - The DTClient is the only channel of communication with the Redis Backend. All requests received by the DTServer
-  \item DTInstance - asfadsfas
-  \item Redis Backend - asdfasdf
-  \item DTClientAPI - 
-  \item DTServerAPI - 
+  \item DTClient - The DTClient is the only channel of communication with the Redis Backend. The DT client transforms the requests received by the DTServer into form understandable by the Redis Backend and queries the appropriate Redis Backend.
+  \item DTInstance - DTInstance comprises of the DTServer and a pool of DTClient instances
+  \item Redis Backend - This is the off the shelf Redis Server instance that provides all the key value store functionality to Diminished Triad.
+  \item DTClientAPI - The user talks only to the DT instance and is unaware of the intricacies of the system. From the user's perspective the DT instances provide a fault tolerant distributed key value store. The DTClientAPI defines all the functions exported by the DTServer to the client. This API makes hides the internal details of DT and makes it look like a fault tolerant key value store to the programmer. A list of all the functions exported DTClientAPI is mentioned later. 
+  \item DTServerAPI - The DTInstance, in particular the DTClient talks to the Redis Backends though a set of functions exported by the Redis Backend. This API is completely internal to the DTInstance and the user is completely unaware of the DTServerAPI.
+  \item Sentinel - The sentinel is the watchdog for the Redis Backends. It actively monitors if the Redis Backends are working as expected. The Sentinel also notifies through an API when something is wrong with one of the monitored Redis instances.
+   \item DTSentinel -  The DTSentinel listens to notifications from the sentinel for any changes like a node leaving the system or joining the system and takes appropriate action in each case to maintain the DT system invariants.
 \end{enumerate}
+
+\subsection{System Layout}
+Every node runs a Redis Backend and a DTInstance. All DTInstances are identical and none of them are more important than the other. A client can talk to any DTInstance using the DTClientAPI. The DTClient will forward the request to the appropriate Redis Backend using the DTServerAPI. Note that the Redis Backend servicing the client's request may or may not be on the same machine as the DTInstance.
+At the moment we have a single Sentinel and DTSentinel instance in our system. We can make our system tolerant to failures of the Sentinel and DTSentinel with minor configuration changes to the Sentinel configuration. The section \ref{fwork} on future work briefly mentions how this can be accomplished. Without loss of generality we will be discussing the system with just one instance of Sentinel and DTSentinel and assume them to be free from failure. Figure \ref{design} shows a typical set for Diminished Triad.
+
+\subsection{DTClientAPI}
+Diminished Triad exposes the following functions to the user. This is a subset of the functions exported by the Redis Backend in the DTServerAPI. A complete implementation of Diminished Triad will ideally expose every single function exported by the Redis Backend. We have limited our scope to the functions listed below.
+\begin{itemize}
+  \item get(key) - gets the value associated with a particular key
+  \item set(key,value) - set the value associated with a particular key
+  \item getStrlen(key) - get length of a value associated with a particular key
+  \item append(key,value) - append a value to the value already associated with a particular key
+  \item lPush(key,value) - insert a value in the first position to the list associated with a particular key
+  \item lPop(key) - remove and return the first element of the list associated with a particular key
+  \item lIndex(key,index) - return the element at a particular index in the list associated with a particular key
+  \item lLen(key) - get length of list associated with a particular key
+\end{itemize}
+
+\subsection{Hashing Keys, the Master and the Chord Ring}
+The Chord ring has N positions in it. Every node hosting a DTInstance and a Redis backend is hashed to one of these N positions. 
+
 
 
 \section{Implementation} \label{implementation}
