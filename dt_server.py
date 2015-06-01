@@ -18,12 +18,13 @@ from spyne.server.wsgi import WsgiApplication
 import threading
 import hashlib
 import redis
+import argparse
 
 class DiminishedTriadService(ServiceBase):
 
     def __init__(self):
         print "I am being instantiated !!!!"
-        
+
     @srpc(Unicode, _returns=Unicode)
     def get(key):
         backs = getNextNBackends(key)
@@ -41,7 +42,7 @@ class DiminishedTriadService(ServiceBase):
             except:
                 print "failed to get key: ", key ," from addr: ",addr," port: ", port
                 continue
-            
+
     @srpc(Unicode,Unicode, _returns=Unicode)
     def set(key,value):
         #r = redis.StrictRedis(host='localhost', port=30001, db=0)
@@ -61,7 +62,7 @@ class DiminishedTriadService(ServiceBase):
                 print "failed to set key: ", key ," to addr: ",addr," port: ", port
                 continue
         return OK
-    
+
     @srpc(Unicode, _returns=Unicode)
     def update_hash_to_back_map(addrs):
         try:
@@ -79,21 +80,21 @@ class DiminishedTriadService(ServiceBase):
         finally:
             lock.release()
             return OK
-    
-    
+
+
     @srpc(_returns=Unicode)
     def getAOFLog():
         f = open(AOFPATH,'r')
         string = f.read()
         print "getAOF returning ", string
         return string
-    
+
     @srpc(_returns=Unicode)
     def getServersList():
         s = str(hash_to_back_map.values())[1:-1]
         print "get server list:", s
         return s
-    
+
     @srpc(Unicode,_returns=Integer)
     def getStrlen(key):
         backs = getNextNBackends(key)
@@ -106,7 +107,7 @@ class DiminishedTriadService(ServiceBase):
                 return r.get(key)
             except:
                 continue
-                
+
     @srpc(Unicode,Unicode, _returns=Integer)
     def append(key,value):
         backs = getNextNBackends(key)
@@ -120,7 +121,7 @@ class DiminishedTriadService(ServiceBase):
             except:
                 print "failed to append to key: ", key ," append_str : ", value ," to addr: ", addr , "port: " , port
                 continue
-        
+
     @srpc(Unicode,Unicode, _returns=Integer)
     def lPush(key,value):
         backs = getNextNBackends(key)
@@ -136,7 +137,7 @@ class DiminishedTriadService(ServiceBase):
             except:
                 print "failed to lPush to key: ", key ," append_str : ", value ," to addr: ", addr , "port: " , port
                 continue
-                
+
     @srpc(Unicode, _returns=Integer)
     def lPop(key):
         backs = getNextNBackends(key)
@@ -150,8 +151,8 @@ class DiminishedTriadService(ServiceBase):
             except:
                 print "failed to lPop to key: ", key ," to addr: ", addr , "port: " , port
                 continue
-    
-    #from the list with key "key" get the element at index "index"      
+
+    #from the list with key "key" get the element at index "index"
     @srpc(Unicode,Integer, _returns=Unicode)
     def lIndex(key,index):
         backs = getNextNBackends(key)
@@ -173,8 +174,8 @@ class DiminishedTriadService(ServiceBase):
             except:
                 print "failed to get index:", index ," key: ", key ," from addr: ",addr," port: ", port
                 continue
-    
-    #from the list with key "key" get the length of the list   
+
+    #from the list with key "key" get the length of the list
     @srpc(Unicode, _returns=Integer)
     def lLen(key):
         backs = getNextNBackends(key)
@@ -192,7 +193,7 @@ class DiminishedTriadService(ServiceBase):
             except:
                 print "failed to get length of list with key :", key ,"from addr: ",addr," port: ", port
                 continue
-    
+
     @srpc(_returns=Unicode)
     def getKeyDist():
         addrs = hash_to_back_map.keys()
@@ -206,9 +207,9 @@ class DiminishedTriadService(ServiceBase):
                 out += ","
         print "getKeyDist returning : {",out,"}"
         return out
-                
-        
-    
+
+
+
 ############################### End of Class DiminishedTriadService ########################################
 
 NUMBACKENDS = 100 # this determines what we are modding by
@@ -235,7 +236,7 @@ back_to_redis_map = {
                             "127.0.0.1:30001":redis.StrictRedis(host="127.0.0.1", port=30001, db=0)
                     }
 
-def getKeysInRange(source_addr,addr1,addr2):    
+def getKeysInRange(source_addr,addr1,addr2):
     # copy keys in range from addr1+1 till addr2 from source_addr
     k1, k2 = hash(addr1), hash(addr2)
     keys_source_addr = getKeysInMaster(source_addr)
@@ -262,7 +263,7 @@ def getNextNBackends(key):
         index = keys.index(hash(key))
         out = []
         for i in range(1,NUMBACKUPS+2):
-            # the master will be the (index + 1)th element 
+            # the master will be the (index + 1)th element
             # we are selecting N+1 elements starting with the master -- master + N backups
             if keys[(index + i)%len(keys)] in hash_to_back_map and hash_to_back_map[keys[(index + i)%len(keys)]] not in out:
                 out.append(hash_to_back_map[keys[(index + i)%len(keys)]])
@@ -280,17 +281,22 @@ def getRedisPyInstance(back):
         port = back.split(":")[1]
         back_to_redis_map[back] = redis.StrictRedis(host=addr, port=port, db=0)
         return back_to_redis_map[back]
-        
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='enter host and port')
+    parser.add_argument('host', help='', default='localhost')
+    parser.add_argument('port', help='', default='50001')
+    args = parser.parse_args()
+    return args
 
 def main():
-    host = environ['host']
-    port = (int)(environ['port'])
-#    host = "127.0.0.1"
-#    port = 50001
+    args = parse_args()
+    host = args.host
+    port = int(args.port)
     HOST = host
     REDIS_PORT = port - 20000
     updateAOFPATH()
-    
+
     from wsgiref.simple_server import make_server
 #     logging.basicConfig(level=logging.DEBUG)
 #     logging.getLogger('spyne.protocol.xml').setLevel(logging.DEBUG)
@@ -302,13 +308,13 @@ def main():
     wsgi_app = WsgiApplication(application)
     server = make_server(host, port, wsgi_app)
     server.serve_forever()
-    
+
 
 if __name__ == '__main__':
     main()
-    
-    
-    
+
+
+
 
 
 # In[ ]:
