@@ -55,7 +55,36 @@ While Redis offers an extremely fast key value cache, its design suffers from so
 
 In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the dataset to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
 
-In Diminished Triad (DT), we hope to provide a fault tolerant systems using Redis backends that improves on several drawbacks of the existing Redis system described earlier. The DT system follows a consistent hashing system similar to Chord \cite{Chord}. It hashes every backed to a position on the ring. Each node is the master for all the keys that hash between its predecessor and itself. All the data that a node is responsible for ( keys for which it is the master ) is replicated in the r nodes that follow it on the ring. Every node is a master for some of the keys and is a backup for r additional nodes. Every time a node joins or leaves the system, they keys are redistributed to maintain this key ownership invariant and maintain r replicas for each master node.
+In Diminished Triad (DT), we hope to provide a fault tolerant systems using Redis backends that improves on several drawbacks of the existing Redis system described earlier. First,  DT follows a consistent hashing system similar to Chord \cite{Chord}. It hashes every backed and keys to a position on the ring. Second, DT automatically moves keys between nodes every time a node joins or leaves the system. Third, DT system, like chord is completely distributed and no node is more important that the other. 
+
+DT maintains two invariants
+\begin{enumerate}
+  \item Each node is the master for all the keys that hash between its predecessor and itself.
+  \item All the data that a node is responsible for ( keys for which it is the master ) is replicated in the r nodes that follow it on the ring.
+\end{enumerate}
+Every node is thus a master for some of the keys and is a backup for the r nodes that precede it. Every time a node is added to the system or a node fails and leaves the system, the keys are redistributed amongst all the backends to maintain the two invariants.
+
+The rest of the paper is organized as follows. Section \ref{design} contains the detailed design of Diminished Triad. This section mentions the various components of DT, their individual roles, the APIs used to communicate between these components. Section \ref{implementation} provides the implementation details of DT. Section \ref{evaluation} provides various metrics that measure the performance of Diminished Triad. This section discusses the relative merits and demerits of Diminished Triad over off the shelf Redis.
+
+\section{Design} \label{Design}
+We first define several terms that will be helpful in describing the system. 
+
+\begin{enumerate}
+  \item User/Client - A user or a client is the customer for the Diminished Triad service. For example, a client requests to set values for some keys, get values etc.
+  \item DTServer - All requests like get and set are made by the client to the DTServer. The DTServer then forwards the request to the appropriate backends that are responsible for the key being queried through the DTClient
+  \item DTClient - The DTClient is the only channel of communication with the Redis Backend. All requests received by the DTServer
+  \item DTInstance - asfadsfas
+  \item Redis Backend - asdfasdf
+  \item DTClientAPI - 
+  \item DTServerAPI - 
+\end{enumerate}
+
+
+\section{Implementation} \label{implementation}
+system implementation here
+
+\section{Evaluation} \label{evaluation}
+system design here
 
 \section{Dataset}
 The CIFAR-10 dataset \cite{krizhevsky2009learning} consists of 60000 32x32 images belonging to 10 classes with 6000 images per class.	The training set consists of 50000 images and the test set consists of 10000 images. The classes are mutually exclusive with almost no overlap between images.
