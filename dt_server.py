@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 import logging
 from os import environ
@@ -18,7 +18,6 @@ from spyne.server.wsgi import WsgiApplication
 import threading
 import hashlib
 import redis
-import sys
 
 class DiminishedTriadService(ServiceBase):
 
@@ -194,6 +193,21 @@ class DiminishedTriadService(ServiceBase):
                 print "failed to get length of list with key :", key ,"from addr: ",addr," port: ", port
                 continue
     
+    @srpc(_returns=Unicode)
+    def getKeyDist():
+        addrs = hash_to_back_map.keys()
+        addrs = sorted(addrs)
+        out = ""
+        for i in range(len(addrs)):
+#             keys = getKeysInRange(source_addr,addr1,addr2)
+            keys = getKeysInRange(addrs[i],addrs[(i-1)%len(addrs)],addrs[i])
+            out += addrs[i] + "-" + len(keys)
+            if i != (len(addrs) - 1):
+                out += ","
+        print "getKeyDist returning : {",out,"}"
+        return out
+                
+        
     
 ############################### End of Class DiminishedTriadService ########################################
 
@@ -220,6 +234,20 @@ hash_to_back_map = {
 back_to_redis_map = {
                             "127.0.0.1:30001":redis.StrictRedis(host="127.0.0.1", port=30001, db=0)
                     }
+
+def getKeysInRange(source_addr,addr1,addr2):    
+    # copy keys in range from addr1+1 till addr2 from source_addr
+    k1, k2 = hash(addr1), hash(addr2)
+    keys_source_addr = getKeysInMaster(source_addr)
+    out = []
+    for key in keys_source_addr:
+        if k2 > k1: # not crossing the beginning of ring
+            if hash(key) > k1 and hash(key) <= k2:
+                out.append(key)
+        else:
+            if hash(key) > k1 or (hash(key) >= 0 and hash(key) <= k2):
+                out.append(key)
+    return out
 
 def updateAOFPATH():
     AOFPATH = "create-multiredis/appendonly-" + str(REDIS_PORT) + ".aof"
@@ -255,8 +283,8 @@ def getRedisPyInstance(back):
         
 
 def main():
-    host = sys.argv[1]
-    port = (int)(sys.argv[2])
+    host = environ['host']
+    port = (int)(environ['port'])
 #    host = "127.0.0.1"
 #    port = 50001
     HOST = host
