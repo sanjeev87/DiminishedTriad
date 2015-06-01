@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # In[2]:
-
+import sys
 import logging
 from os import environ
 logging.basicConfig(level=logging.DEBUG)
@@ -282,17 +282,9 @@ def getRedisPyInstance(back):
         back_to_redis_map[back] = redis.StrictRedis(host=addr, port=port, db=0)
         return back_to_redis_map[back]
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='enter host and port')
-    parser.add_argument('host', help='', default='localhost')
-    parser.add_argument('port', help='', default='50001')
-    args = parser.parse_args()
-    return args
-
 def main():
-    args = parse_args()
-    host = args.host
-    port = int(args.port)
+    host = sys.argv[1]
+    port = int(sys.argv[2])
     HOST = host
     REDIS_PORT = port - 20000
     updateAOFPATH()

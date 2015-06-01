@@ -93,6 +93,7 @@ SENDPORT=$((ENDPORT+20000))
         echo "Stopping $SPORT"
         kill `lsof -t -i:$SPORT`
     done
+exit 0
 fi
 
 if [ "$1" == "stop" ]
