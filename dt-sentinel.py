@@ -33,6 +33,10 @@ NUMBACKUPS = 2
 HASH_TO_BACK_MAP = None
 LOG_FILE = None
 LOG_WRITER = None
+FLAG_MASTER_JOIN = "migrate_master_join"
+FLAG_JOIN = "join"
+FLAG_LEAVE = "leave"
+
 
 def dtSentinelInit():
     global REDIS_SENTINEL
@@ -49,7 +53,7 @@ def dtSentinelInit():
     MSG_QUEUE = Queue.Queue(maxsize=50)
     LOG_FILE = open(getLogFileName(), 'w')
     LOG_WRITER = csv.writer(LOG_FILE, delimiter=',')
-    LOG_WRITER.writerow(['From', 'To', 'NumKeys', 'Keys'])
+    LOG_WRITER.writerow(['From', 'To', 'NumKeys', 'Keys', 'Flags'])
 
 
     
@@ -73,7 +77,7 @@ def getKeysInRange(source_addr,addr1,addr2):
                 out.append(key)
     return out
                 
-def migrateKeys(source_addr,destination_addr,keys):
+def migrateKeys(source_addr,destination_addr,keys,flag="none"):
     old_log = getMasterLogs(source_addr)
     new_log = ""
     log_diff = [""]
@@ -106,7 +110,8 @@ def migrateKeys(source_addr,destination_addr,keys):
             new_keys.append(i[1])
         keys = new_keys
     
-    writeLog(source_addr, destination_addr, keyCount, keyList)
+    # writeLog(source_addr, destination_addr, keyCount, keyList,flag)
+    writeLog(source_addr, destination_addr, keyCount,flag)
     return
 
 
@@ -192,7 +197,8 @@ def handleJoin(msg):
             keys = getKeysInRange(prev_backs[i],prev_backs[i+1],prev_backs[i])
             print "obtaining keys:",keys," between :",prev_backs[i+1] , " and ", prev_backs[i]
     #       migrateKeys(source_addr,destination_addr,keys)
-            t = threading.Thread(target=migrateKeys, args=(prev_backs[i],new_server,keys))
+            # t = threading.Thread(target=migrateKeys, args=(prev_backs[i],new_server,keys))
+            t = threading.Thread(target=migrateKeys, args=(prev_backs[i],new_server,keys,FLAG_JOIN))
             # Sticks the thread in a list so that it remains accessible
             thread_list.append(t)
             #migrateKeys(prev_backs[i],new_server,keys)
@@ -205,7 +211,8 @@ def handleJoin(msg):
     try:
         keys = getKeysInRange(next_back,prev_backs[0],new_server)
         print "In handle join getting keys between prev:",prev_backs[0], " and new server:", new_server
-        t = threading.Thread(target=migrateKeys, args=(next_back,new_server,keys))
+        # t = threading.Thread(target=migrateKeys, args=(next_back,new_server,keys))
+        t = threading.Thread(target=migrateKeys, args=(next_back,new_server,keys,FLAG_MASTER_JOIN))
         # Sticks the thread in a list so that it remains accessible
         thread_list.append(t)
 #         migrateKeys(next_back,new_server,keys)
@@ -243,12 +250,12 @@ def handleLeave(msg):
     for i in range(0, backs_anticlockwise_len-1):
         keys = getKeysInRange(backs_anticlockwise[i], backs_anticlockwise[i+1], backs_anticlockwise[i])
         print keys
-        migrateKeys(backs_anticlockwise[i], backs_clockwise[backs_anticlockwise_len - 2 - i], keys)
+        migrateKeys(backs_anticlockwise[i], backs_clockwise[backs_anticlockwise_len - 2 - i], keys,FLAG_LEAVE)
         
     if backs_anticlockwise_len > 1:
         keys = getKeysInRange(backs_clockwise[0], backs_anticlockwise[0], dead_server)
         print keys
-        migrateKeys(backs_clockwise[0], backs_clockwise[backs_anticlockwise_len - 1], keys)
+        migrateKeys(backs_clockwise[0], backs_clockwise[backs_anticlockwise_len - 1], keys,FLAG_LEAVE)
     
     updateHashToBackMap()
     sendMasterList(HASH_TO_BACK_MAP.values())
