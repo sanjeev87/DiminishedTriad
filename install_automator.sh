@@ -1,5 +1,6 @@
 
-declare -a arr=("ec2-52-26-45-12.us-west-2.compute.amazonaws.com" "ec2-52-10-168-27.us-west-2.compute.amazonaws.com" "ec2-52-24-138-59.us-west-2.compute.amazonaws.com" "ec2-52-24-228-62.us-west-2.compute.amazonaws.com" "ec2-52-25-225-154.us-west-2.compute.amazonaws.com" "ec2-52-25-235-10.us-west-2.compute.amazonaws.com" "ec2-52-26-12-148.us-west-2.compute.amazonaws.com" "ec2-52-26-48-223.us-west-2.compute.amazonaws.com")
+#declare -a arr=("ec2-52-26-45-12.us-west-2.compute.amazonaws.com" "ec2-52-10-168-27.us-west-2.compute.amazonaws.com" "ec2-52-24-138-59.us-west-2.compute.amazonaws.com" "ec2-52-24-228-62.us-west-2.compute.amazonaws.com" "ec2-52-25-225-154.us-west-2.compute.amazonaws.com" "ec2-52-25-235-10.us-west-2.compute.amazonaws.com" "ec2-52-26-12-148.us-west-2.compute.amazonaws.com" "ec2-52-26-48-223.us-west-2.compute.amazonaws.com")
+declare -a arr=("ec2-52-24-47-158.us-west-2.compute.amazonaws.com")
 # declare -a arr=("ec2-52-26-45-12.us-west-2.compute.amazonaws.com")
 for i in "${arr[@]}"
 do

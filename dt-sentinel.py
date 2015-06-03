@@ -29,7 +29,7 @@ def startSentinelListner():
 
 REDIS_SENTINEL = None
 MSG_QUEUE = None
-NUMBACKUPS = 2
+NUMBACKUPS = 5
 HASH_TO_BACK_MAP = None
 LOG_FILE = None
 LOG_WRITER = None
