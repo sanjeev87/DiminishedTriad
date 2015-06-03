@@ -53,6 +53,26 @@ then
     exit 0
 fi
 
+if [ "$1" == "sentinel2" ]
+then
+    SPORT=$((PORT+SENTINELOFFSET))
+ 
+    # while [ $((SPORT < ENDPORT + SENTINELOFFSET)) != "0" ]; do
+        SPORT=$((SPORT+1))
+        echo "Starting Sentinel on $SPORT"
+        printf "port %s\n" ${SPORT} >> ${SPORT}.conf
+
+        # while [ $((PORT < ENDPORT)) != "0" ]; do
+        #     PORT=$((PORT+1))
+        #     printf "sentinel monitor masterP_%s 127.0.0.1 %d 2\n" ${PORT} ${PORT} >> ${SPORT}.conf
+
+        #     printf "sentinel down-after-milliseconds masterP_%s  5000\n"  ${PORT}>> ${SPORT}.conf
+        #     printf "sentinel failover-timeout masterP_%s 60000\n"  ${PORT} >> ${SPORT}.conf
+        # done
+        redis-server ${SPORT}.conf --sentinel
+    # done
+    exit 0
+fi
 if [ "$1" == "sentinel" ]
 then
     SPORT=$((PORT+SENTINELOFFSET))
@@ -94,6 +114,14 @@ SENDPORT=$((ENDPORT+20000))
         kill `lsof -t -i:$SPORT`
     done
 exit 0
+fi
+
+
+
+if [ "$1" == "stopsentinel" ]
+then
+    redis-cli -p 40001 shutdown
+    exit 0
 fi
 
 if [ "$1" == "stop" ]
@@ -149,6 +177,7 @@ then
     rm -rf dump*.rdb
     rm -rf nodes*.conf
     rm -rf *.conf
+    rm -rf pdt_server*.txt
     exit 0
 fi
 

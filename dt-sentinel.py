@@ -24,19 +24,19 @@ def startSentinelListner():
 
     for message in p.listen():
         handleMessage(message)
-        
-dtSentinelInit()
-startSentinelListner()
-
 
 # In[ ]:
 
 REDIS_SENTINEL = None
 MSG_QUEUE = None
-NUMBACKUPS = 2
+NUMBACKUPS = 5
 HASH_TO_BACK_MAP = None
 LOG_FILE = None
 LOG_WRITER = None
+FLAG_MASTER_JOIN = "migrate_master_join"
+FLAG_JOIN = "join"
+FLAG_LEAVE = "leave"
+
 
 def dtSentinelInit():
     global REDIS_SENTINEL
@@ -45,14 +45,15 @@ def dtSentinelInit():
     global LOG_FILE
     global LOG_WRITER
     REDIS_SENTINEL = redis.StrictRedis(host='localhost', port=40001)
-    print REDIS_SENTINEL.sentinel_masters().keys()
+    # print REDIS_SENTINEL.sentinel_masters().keys()
     HASH_TO_BACK_MAP = {}
     updateHashToBackMap()
-    REDIS_SENTINEL.sentinel_masters()['masterP_30001']['ip']
+    # print REDIS_SENTINEL.sentinel_masters()
+    print HASH_TO_BACK_MAP.values()
     MSG_QUEUE = Queue.Queue(maxsize=50)
     LOG_FILE = open(getLogFileName(), 'w')
     LOG_WRITER = csv.writer(LOG_FILE, delimiter=',')
-    LOG_WRITER.writerow(['From', 'To', 'NumKeys', 'Keys'])
+    LOG_WRITER.writerow(['From', 'To', 'NumKeys', 'Keys', 'Flags'])
 
 
     
@@ -76,7 +77,7 @@ def getKeysInRange(source_addr,addr1,addr2):
                 out.append(key)
     return out
                 
-def migrateKeys(source_addr,destination_addr,keys):
+def migrateKeys(source_addr,destination_addr,keys,flag="none"):
     old_log = getMasterLogs(source_addr)
     new_log = ""
     log_diff = [""]
@@ -109,7 +110,8 @@ def migrateKeys(source_addr,destination_addr,keys):
             new_keys.append(i[1])
         keys = new_keys
     
-    writeLog(source_addr, destination_addr, keyCount, keyList)
+    # writeLog(source_addr, destination_addr, keyCount, keyList,flag)
+    writeLog(source_addr, destination_addr, keyCount,flag)
     return
 
 
@@ -164,9 +166,7 @@ def getMastersList():
 def sendMasterList(ml = HASH_TO_BACK_MAP.values() if HASH_TO_BACK_MAP else None):
     for url in ml:
         ip,port = url.split(':')
-        if port == '30001':
-            sendListAsPost('http://'+ip+':'+str(int(port) + 20000), ml)
-            break
+        sendListAsPost('http://'+ip+':'+str(int(port) + 20000), ml)
 
 def handleJoin(msg):
     arr = msg['data'].split(" ")
@@ -197,7 +197,8 @@ def handleJoin(msg):
             keys = getKeysInRange(prev_backs[i],prev_backs[i+1],prev_backs[i])
             print "obtaining keys:",keys," between :",prev_backs[i+1] , " and ", prev_backs[i]
     #       migrateKeys(source_addr,destination_addr,keys)
-            t = threading.Thread(target=migrateKeys, args=(prev_backs[i],new_server,keys))
+            # t = threading.Thread(target=migrateKeys, args=(prev_backs[i],new_server,keys))
+            t = threading.Thread(target=migrateKeys, args=(prev_backs[i],new_server,keys,FLAG_JOIN))
             # Sticks the thread in a list so that it remains accessible
             thread_list.append(t)
             #migrateKeys(prev_backs[i],new_server,keys)
@@ -210,7 +211,8 @@ def handleJoin(msg):
     try:
         keys = getKeysInRange(next_back,prev_backs[0],new_server)
         print "In handle join getting keys between prev:",prev_backs[0], " and new server:", new_server
-        t = threading.Thread(target=migrateKeys, args=(next_back,new_server,keys))
+        # t = threading.Thread(target=migrateKeys, args=(next_back,new_server,keys))
+        t = threading.Thread(target=migrateKeys, args=(next_back,new_server,keys,FLAG_MASTER_JOIN))
         # Sticks the thread in a list so that it remains accessible
         thread_list.append(t)
 #         migrateKeys(next_back,new_server,keys)
@@ -248,12 +250,12 @@ def handleLeave(msg):
     for i in range(0, backs_anticlockwise_len-1):
         keys = getKeysInRange(backs_anticlockwise[i], backs_anticlockwise[i+1], backs_anticlockwise[i])
         print keys
-        migrateKeys(backs_anticlockwise[i], backs_clockwise[backs_anticlockwise_len - 2 - i], keys)
+        migrateKeys(backs_anticlockwise[i], backs_clockwise[backs_anticlockwise_len - 2 - i], keys,FLAG_LEAVE)
         
     if backs_anticlockwise_len > 1:
         keys = getKeysInRange(backs_clockwise[0], backs_anticlockwise[0], dead_server)
         print keys
-        migrateKeys(backs_clockwise[0], backs_clockwise[backs_anticlockwise_len - 1], keys)
+        migrateKeys(backs_clockwise[0], backs_clockwise[backs_anticlockwise_len - 1], keys,FLAG_LEAVE)
     
     updateHashToBackMap()
     sendMasterList(HASH_TO_BACK_MAP.values())
@@ -264,23 +266,28 @@ def handleMessage(message):
     print message['data'], t
     if t == '+sdown':
         handleLeave(message)
-    elif t == '-sdown':
+    elif t == '-sdown' or t == '+monitor':
         handleJoin(message)
     else:
 #         print "Unknown channel message:", message
         t = None
 def sendListAsPost(url, slist):
-    url = url + '/update_hash_to_back_map?'
-    print url, slist
-    s = ''
-    for i in slist: s = s + ',' + i
-    s = s[1:]
-    data = urllib.urlencode({'addrs' : s})
-#     print 'encoded data', data
-    response = urllib2.urlopen(url+data)
-    print "POST Request:" + url+data
-    result = response.read()
-    return result
+    try:
+        url = url + '/update_hash_to_back_map?'
+        print url, slist
+        s = ''
+        for i in slist: s = s + ',' + i
+        s = s[1:]
+        data = urllib.urlencode({'addrs' : s})
+    #     print 'encoded data', data
+        print "Trying to POST Request:" + url+data
+        response = urllib2.urlopen(url+data)
+        
+        result = response.read()
+        return result
+    except:
+        print "Failed to update:",url
+        return ""
     
 def sanitizeString(resp):
     resp = resp.replace('\"', '')
@@ -336,6 +343,8 @@ def writeLog(*args):
     LOG_FILE.flush()
     
 
+dtSentinelInit()
+startSentinelListner()
 
 # In[ ]:
 
