@@ -102,9 +102,18 @@ Diminished Triad exposes the following functions to the user. This is a subset o
 The Chord ring has N positions in it. Every node hosting a DTInstance and a Redis backend is hashed to one of these N positions. Every key is also hashed to one of these N positions. As we move clockwise in the chord ring, we encounter increasing values of hash values until we reach the maximum and then go back to 0. Every backend is the master for the all the keys that hash to its position in the ring through the hash positions up to but not including its  predecessor in the ring. The predecessor of a backend is defined as the first live backend that is encountered as we move anti clockwise in the chord ring. Similarly the successor is the first live backend that is encountered as we move clockwise in the chord ring. The r backends that immediately succeed the master serve as the r backups of that particular master. 
 
 \subsection{Handling Read and Write Requests}
+A read or write request is issued by the user or client to the DTInstance. The request reaches the DTServer running in the DTInstance through the DTClient API. The DTServer receives the request, hashes the key to figure out the master and the r backups corresponding to the key. It then performs the actions required for the request on the  r + 1 redis backends (mater plus the r backups) using the DTClient to connect to them which implements the DTServerAPI to talk to the redis backends. If the request is a write request, the DTInstance writes synchronously to the master and all the backups. If it is a read request, the DTInstance returns on the first successful read starting with the master and then trying the r backups.
 
 
 \subsection{The Sentinel, DTSentinel}
+The Sentinel is a watchdog for all our Redis backends. In Diminshed Triad, we use the Sentinel for performing the following:
+\begin{itemize}
+  \item Monitoring - Sentinel constantly checks if the Redis Backends are working as expected
+  \item Notification - Sentinel notifies the DTSentinel thorough pub/sub messages that something is wrong with one of the monitored Redis Backends.
+  \item Configuration provider - The sentinel maintains the configuration of all the currently alive Redis Backends.
+\end{itemize}
+
+The Sentinel itself is designed to run in a configuration where there are multiple Sentinel processes cooperating together. We have not used configured our Sentinel to work this way but this can be accomplished with minor configuration modifications. This makes the Sentinel fault tolerant to failures. 
 
 
 \subsection{Handling Failures and Data Redistribution}
