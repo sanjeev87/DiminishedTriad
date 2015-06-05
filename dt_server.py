@@ -90,6 +90,13 @@ class DiminishedTriadService(ServiceBase):
         return string
 
     @srpc(_returns=Unicode)
+    def shutDown():
+        print "Received shutdown signal."
+        t = threading.Thread(target=server.shutdown)
+        t.start()
+        return OK
+
+    @srpc(_returns=Unicode)
     def getServersList():
         s = str(hash_to_back_map.values())[1:-1]
         print "get server list:", s
@@ -215,6 +222,8 @@ class DiminishedTriadService(ServiceBase):
 NUMBACKENDS = 100 # this determines what we are modding by
 NUMBACKUPS = 2
 OK = "ok"
+SHUTDOWN = False
+server = None
 
 def hash(key):
     return int(hashlib.sha1(key).hexdigest(), 16)
@@ -289,6 +298,7 @@ def getRedisPyInstance(back):
         return back_to_redis_map[back]
 
 def main():
+    global server
     host = sys.argv[1]
     port = int(sys.argv[2])
     HOST = host
@@ -305,11 +315,11 @@ def main():
     )
     wsgi_app = WsgiApplication(application)
     server = make_server(host, port, wsgi_app)
-    server.serve_forever()
+    return server.serve_forever()
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
 
 
 
