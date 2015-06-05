@@ -99,7 +99,19 @@ Diminished Triad exposes the following functions to the user. This is a subset o
 \end{itemize}
 
 \subsection{The Chord Ring, Hashing Keys, Master and the R Backups}
-The Chord ring has N positions in it. Every node hosting a DTInstance and a Redis backend is hashed to one of these N positions. Every key is also hashed to one of these N positions. As we move clockwise in the chord ring, we encounter increasing values of hash values until we reach the maximum and then go back to 0. Every backend is the master for the all the keys that hash to its position in the ring through the hash positions up to but not including its  predecessor in the ring. The predecessor of a backend is defined as the first live backend that is encountered as we move anti clockwise in the chord ring. Similarly the successor is the first live backend that is encountered as we move clockwise in the chord ring. The r backends that immediately succeed the master serve as the r backups of that particular master.
+The Chord ring has N positions in it. Every node hosting a DTInstance and a Redis backend is hashed to one of these N positions. Every key is also hashed to one of these N positions. As we move clockwise in the chord ring, we encounter increasing values of hash values until we reach the maximum and then go back to 0. Every backend is the master for the all the keys that hash to its position in the ring through the hash positions up to but not including its  predecessor in the ring. The predecessor of a backend is defined as the first live backend that is encountered as we move anti clockwise in the chord ring. Similarly the successor is the first live backend that is encountered as we move clockwise in the chord ring. The r backends that immediately succeed the master serve as the r backups of that particular master. 
+
+\subsection{Handling Read and Write Requests}
+
+
+\subsection{The Sentinel, DTSentinel}
+
+
+\subsection{Handling Failures and Data Redistribution}
+
+
+\subsection{Handling New Joins and Data Redistribution}
+
 
 
 
@@ -108,6 +120,15 @@ system implementation here
 
 \section{Evaluation} \label{evaluation}
 system design here
+
+\section{Conclusions} \label{conclusions}
+conclusion and summary design here
+
+\section{Future Work} \label{futurework}
+future work here
+
+\section{Acknowledgments} \label{acknowledgments}
+future work here
 
 \section{Dataset}
 The CIFAR-10 dataset \cite{krizhevsky2009learning} consists of 60000 32x32 images belonging to 10 classes with 6000 images per class.	The training set consists of 50000 images and the test set consists of 10000 images. The classes are mutually exclusive with almost no overlap between images.
