@@ -113,13 +113,11 @@ The Sentinel is a watchdog for all our Redis backends. In Diminshed Triad, we us
   \item Configuration provider - The sentinel maintains the configuration of all the currently alive Redis Backends.
 \end{itemize}
 
-The Sentinel itself is designed to run in a configuration where there are multiple Sentinel processes cooperating together. We have not used configured our Sentinel to work this way but this can be accomplished with minor configuration modifications. This makes the Sentinel fault tolerant to failures. 
+The Sentinel itself is designed to run in a configuration where there are multiple Sentinel processes cooperating together. We have not configured our Sentinel to work this way but this can be accomplished with minor configuration modifications. These changes make the Sentinel fault tolerant to failures. 
 
+The DTSentinel listens to notifications from the Sentinel. Every time a node fails or a new node joins, the DTSentinel receives the notification from the Sentinel and is responsible for redistributing data and maintaining the two Diminished Triad invariants. The next section describes how data is moved when a node fails or a new node joins the system.
 
-\subsection{Handling Failures and Data Redistribution}
-
-
-\subsection{Handling New Joins and Data Redistribution}
+\subsection{Handling Failures, New Joins and Data Redistribution}
 
 
 
