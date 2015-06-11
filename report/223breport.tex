@@ -119,7 +119,24 @@ The DTSentinel listens to notifications from the Sentinel. Every time a node fai
 
 \subsection{Handling Failures, New Joins and Data Redistribution}
 
+Figure \ref{handledead} shows the data migration that is done when a redis backend fails. For the purposes of this section, we assume our system is configured to have two backups for every master. The initial configurations of the system is shown inside the chord ring. M represents a particular master, B1 and B2 its two backups, M-1 and M-2 its two predecessors. In the figure, M is assumed to have failed. The new configuration after M fails is shown outside the chord ring. In order to get to the configuration and maintain the two Diminished Triad invariants, we need to perform 3 data migrations. In general, if we have r backups, we need to perform r + 1 data migrations. Each of these data migrations is shown by an arrow in figure \ref{handledead}. The arrow originates along a section of the chord ring and terminates at a redis backed. A copy of all the keys that are hashed that section of the chord ring have to migrated to the redis backed that the arrow is pointing to from a redis backend that has all the keys that are being migrated. For example, when M fails, we will move keys for which it was the master , i.e. the keys that originally hashed between M and M-1 to redis backend B2. Since B1 was originally a backup of M, it will have this data and all this data will be migrated from the original B1 to the new reconfigured B2. This data migration is shown by the arrow at originated between the original M and original M-1 redis backends. Similarly we move data corresponding to each of those arrows. Once data migrations is completed, the Diminished Triad invariants would have been restored after the failure.
 
+Similarly, when a node joins, if the system is configured to have r backups,  a set of r+1 data migrations is sufficient to bring the node into the system and restore the Diminished Triad invariants. Figure \ref{handlejoin} shows the data migration that is carried out when a new node joins. 
+
+\begin{figure}[hbt]
+  \centering
+  \includegraphics[scale=0.7]{handle_dead}
+  \caption{Data Migration During Failures}
+  \label{handledead}
+\end{figure}
+
+
+\begin{figure}[hbt]
+  \centering
+  \includegraphics[scale=0.3]{handle_join}
+  \caption{Data Migration During Node Join}
+  \label{handlejoin}
+\end{figure}
 
 
 \section{Implementation} \label{implementation}
