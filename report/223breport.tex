@@ -143,7 +143,33 @@ Similarly, when a node joins, if the system is configured to have r backups,  a 
 system implementation here
 
 \section{Evaluation} \label{evaluation}
-system design here
+
+\subsection{Comparing Fault Tolerance and Probability of Losing Data between DT and Redis}
+Consider a system with N nodes and r backups. Assuming infinite capacity at each node and sufficient time in between failures, DT can handle N-1 node failures. Under more practical considerations (just sufficient capacity, network bandwidth etc.), system is guaranteed to handle N - r - 1 random node failures and still maintain r copies of all data.
+An off the shelf redis cluster system with r backups can loose data with r + 1 targeted node failures as the backups are unaware of anything outside the master that they are replicating.
+
+Lets assume that all nodes can fail with equal probability p. In the redis cluster system, assume a master has failed. 
+\begin{equation}\label{xx}
+\begin{split}
+Pr(Losing Data) = Pr(Failure of All Its Backups)\\
+Pr(Failure of All Its Backups) = p* r / (N - 1)\\
+Pr(Losing Data) = p*r/(N-1) * p*(r-1)/(N-2) * p*(r-2)/(N-3) * ... * p/(N-r)\\
+=p^{k}*r!*(N-r-1)!/(N-1)!\\
+\end{split}
+\end{equation}
+
+Lets compute the probability of losing data in the Diminished Triad System. DT is assumed to be fault tolerant to N - r - 1 random node failures.
+\begin{equation}\label{xx}
+\begin{split}
+Pr(Losing Data) = Pr(N - r  Node Failures)\\
+Pr(N - r  Node Failures) = p/N * p/(N-1) * p/(N-2) * ... * p/(N-r-1)\\
+=p^{N-r}*(N-r-2)!/(N)!\\
+\end{split}
+\end{equation}
+
+The probability of losing data is significantly lower in DT as compared to Redis Cluster.
+
+
 
 \section{Conclusions} \label{conclusions}
 conclusion and summary design here
