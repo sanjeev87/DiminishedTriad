@@ -141,7 +141,30 @@ Similarly, when a node joins, if the system is configured to have r backups,  a 
 
 
 \section{Implementation} \label{implementation}
-system implementation here
+% DT_Server, DT Sentinel, redis-py, spyne
+\begin{figure*}[htb]
+  \centering
+  \includegraphics[scale=0.6]{impl1}
+  \caption{svg image}
+\end{figure*}
+
+
+We used Python 2.7 to implement the DT Server, DT Client and DT Sentinel. Python was chosen because of its flexibility and ability to prototype and iterate faster. 
+
+DT Server: Each DT Server functions as a RPC server. We use the spyne rpc toolkit for python to create the RPC server. For each function in the DTClient API (get, set, append, etc.) there's a corresponding RPC function call along with the necessary parameters. RPC calls can be made by HTTP post requests, passing in the redis command and parameters as the post arguments. A DT Server has a upto date list of alive nodes in the ring. When a get/set command is received for a particular key, the server hashes the key and finds out which redis server the key is mapped to. It then forwards the request to the particular server and its backup using DT Client.
+
+DT Client: This the component that talks to the redis servers. Each DT Client is connected to all the redis servers in the ring. We use the redis-py python library for redis. It greatly simplifies the process of talking to a redis server by exposing all redis commands via easy to use API. When the DT Client receives a request for issuing a command for a redis server, it issues the command with the help of redis-py.
+
+DT CLI: To make it easy for the user to send commands to redis, we also designed a utility DT CLI which provides similar behaviour as redis-cli. User can input redis commands like set foo bar, get foo, etc. These commands are converted into a http request and sent to the DT Server. 
+
+DT Sentinel: The DT Sentinel runs in a separate process. Its task is to monitor any configuration changes in the ring and update all the active nodes about the latest configuration. The DT Sentinel is backed by the redis sentinel which is a special sentinel mode of operation of a redis server. In sentinel mode, a redis server doesn't store any key data but monitors other redis servers and can send push notifications on configuration change. DT Sentinel starts up a redis sentinel and subscribes to status change notifications. Any time a node leaves or joins the ring, DT sentinel gets the message from redis-sentinel. DT Sentinel then performs any necessary data migration between nodes and finally sends the latest node configuration to all nodes in the ring.
+
+Deploying on AWS:
+
+We tested our system on Amazon AWS. We created 4 instances with 1 GB RAM, 2.2 GHz CPU, running Debian. We started 3 redis servers and instances on each of the machines, redis sentinel  and DT Sentinel on our local machine. We had written scripts which would install all dependencies and dt instances to automate the entire installation process.
+
+We also wrote scripts for evaluating the performance of the system. These scripts wrote random keys and values and measured the latency/consistency with varying values of num-backups, num-servers, etc.
+
 
 \section{Evaluation} \label{evaluation}
 
