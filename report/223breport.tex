@@ -52,7 +52,7 @@ Diminished Triad is a (partial) diminished implementation of chord by the three 
 While Redis offers an extremely fast key value cache, its design suffers from some major drawbacks. Redis does not support consistent hashing, the slaves of a particular master are only aware of the master that they are replicating and unaware of the state of the rest of the system. Redis also does not support automatic migration of keys when a new node joins or readjustment of responsibilities when a node fails. Diminished Triad aims to address these drawbacks of Redis at the cost of an additional layer of indirection and its associated overheads.
 
 \section{Introduction}
-"Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{http://redis.io/topics/introduction} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has r backups, it can support at most r random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
+"Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{intro} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has r backups, it can support at most r random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
 
 In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the dataset to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
 
@@ -129,11 +129,12 @@ Whenever an existing node fails or a new node joins the ring, our system perform
 
 Figure \ref{handledead} shows the resharding steps when a redis backend fails. For the purposes of this section, we assume our system is configured to have two backups for every master. The initial configurations of the system is shown inside the chord ring. M represents a particular master, B1 and B2 its two backups, M-1 and M-2 its two predecessors. In the figure, M is assumed to have failed. The new configuration after M fails is shown outside the chord ring. In order to get to the configuration and maintain the two Diminished Triad invariants, we need to perform 3 data migrations. In general, if we have r backups, we need to perform r + 1 data migrations. Each of these data migrations is shown by an arrow in figure \ref{handledead}. The arrow originates along a section of the chord ring and terminates at a redis backed. A copy of all the keys that are hashed that section of the chord ring have to migrated to the redis backed that the arrow is pointing to from a redis backend that has all the keys that are being migrated. For example, when M fails, we will move keys for which it was the master , i.e. the keys that originally hashed between M and M-1 to redis backend B2. Since B1 was originally a backup of M, it will have this data and all this data will be migrated from the original B1 to the new reconfigured B2. This data migration is shown by the arrow at originated between the original M and original M-1 redis backends. Similarly we move data corresponding to each of those arrows. Once data migrations is completed, the Diminished Triad invariants would have been restored after the failure.
 
+
 Similarly, when a node joins, if the system is configured to have r backups,  a set of r+1 data migrations is sufficient to bring the node into the system and restore the Diminished Triad invariants. Figure \ref{handlejoin} shows the data migration that is carried out when a new node joins. 
 
 \begin{figure}[hbt]
   \centering
-  \includegraphics[scale=0.7]{handle_dead}
+  \includegraphics[scale=0.4]{handle_dead}
   \caption{Data Migration During Failures}
   \label{handledead}
 \end{figure}
@@ -141,7 +142,7 @@ Similarly, when a node joins, if the system is configured to have r backups,  a 
 
 \begin{figure}[hbt]
   \centering
-  \includegraphics[scale=0.3]{handle_join}
+  \includegraphics[scale=0.4]{handle_join}
   \caption{Data Migration During Node Join}
   \label{handlejoin}
 \end{figure}
@@ -252,7 +253,7 @@ future work here
 future work here
 \begin{thebibliography}{9}
 \bibitem{chord} \emph{Chord: A Scalable Peer-toPeer Lookup Protocol for Internet Applications}  Ion Stoica, Robert Morris, David Liben Nowell, David R.Karger, M. Frans Kaashoek, Frank Dabek, and Hari Balakrishnan
-\bibitem{chopra} \emph{Learning a similarity metric discriminatively with Application to Face Verification}  Sumith Chopra, Raia Hadsell, Yann Le Cunn
+\bibitem{intro} \emph{http://redis.io}  Redis
 \bibitem{raia} \emph{Dimensionality Reduction By Learning an Invariant Mapping} Raia Hadsell, Sumith Chopra, Yann Le Cunn
 \bibitem{kenji} \emph{A similarity-based neural network for facial expression analysis} Kenji Suzuki , Hiroshi Yamada , Shuji Hashimoto
 \bibitem{nimstim} \emph{NimStim Face Stimulus Set} The MacArthur Foundation Research Network on Early Experience and Brain Development
