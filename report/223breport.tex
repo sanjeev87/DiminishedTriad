@@ -169,8 +169,8 @@ We also wrote scripts for evaluating the performance of the system. These script
 \section{Evaluation} \label{evaluation}
 
 \subsection{Comparing Fault Tolerance and Probability of Losing Data between DT and Redis}
-Consider a system with N nodes and r backups. Assuming infinite capacity at each node and sufficient time in between failures, DT can handle N-1 node failures. Under more practical considerations (just sufficient capacity, network bandwidth etc.), system is guaranteed to handle N - r - 1 random node failures and still maintain r copies of all data.
-An off the shelf redis cluster system with r backups can loose data with r + 1 targeted node failures as the backups are unaware of anything outside the master that they are replicating.
+Consider a system with \(N\) nodes and \(r\) backups. Assuming infinite capacity at each node and sufficient time in between failures, DT can handle \(N-1\) node failures. Under more practical considerations (just sufficient capacity, network bandwidth etc.), system is guaranteed to handle \(N - r - 1\) random node failures and still maintain \(r\) copies of all data.
+An off the shelf redis cluster system with \(r\) backups can loose data with \(r + 1\) targeted node failures as the backups are unaware of anything outside the master that they are replicating.
 
 Lets assume that all nodes can fail with equal probability p. In the redis cluster system, assume a master has failed. 
 \begin{equation}
@@ -201,8 +201,8 @@ The probability of losing data is significantly lower in DT as compared to Redis
 One of the big improvements that DT offers over Redis Cluster is consistent hashing. We would like our consistent hashing scheme to have following properties suggested in Chord \cite{chord}.
 For any set of N nodes and K keys, with high probability, the following is true.
 \begin{enumerate}
-\item Each Node is responsible for at most \(1+ \epsilon\)*K/N keys
-\item When a \(N+1\){th} node joins or leaves the network, the responsibility for O\(K/N\) keys changes the hands. 
+\item Each Node is responsible for at most \((1+ \epsilon )\)*K/N keys for some small  \( \epsilon  \)
+\item When a \((N+1)^{th}\) node joins or leaves the network, the responsibility for O\((K/N)\) keys changes the hands. 
 \end{enumerate}
 
 \begin{figure}[ht]
@@ -226,9 +226,9 @@ For any set of N nodes and K keys, with high probability, the following is true.
 \label{fig:conhashing}
 \end{figure}
 
+Figure \ref{fig:conhashing} shows a box plot of number of keys that were migrated when a new node joins with a certain number of existing nodes and keys in the system with measurements from several runs of the experiment with the same initial conditions. For example, in figure \ref{fig:subfigure10n} the system had 10 nodes. We measured the number of keys that were migrated when an eleventh node joined the system. We generated keys at random and stored data in the system. The x-axis shows the number of keys that were in the system when the eleventh node joined the system. 
 
-
-
+The black line shows the value of \(K/N\) where \(K\) is the number of keys in the system and \(N\) is the number of nodes in the system. The black line helps compare the performance of our consistent hashing scheme with our theoretical targets for the system described above. The number of key migrations is consistently below the black line. As expected the variability in the number of keys migrated reduced as the number of keys and the number of nodes in the system increases.
 
 \section{Conclusions} \label{conclusions}
 conclusion and summary design here
@@ -407,7 +407,7 @@ In the future, I would like to train deeper networks for higher number of epochs
 I would like to thank Professor Zhuowen Tu and 2Lab for providing access to their lab server with which I was able to use GPUs to speed up the training in Caffe.
 
 \begin{thebibliography}{9}
-\bibitem{chord} \emph{Cord: A Scalable Peer-toPeer Lookup Protocol for Internet Applications}  Ion Stoica,
+\bibitem{chord} \emph{Chord: A Scalable Peer-toPeer Lookup Protocol for Internet Applications}  Ion Stoica, Robert Morris, David Liben Nowell, David R.Karger, M. Frans Kaashoek, Frank Dabek, and Hari Balakrishnan
 \bibitem{chopra} \emph{Learning a similarity metric discriminatively with Application to Face Verification}  Sumith Chopra, Raia Hadsell, Yann Le Cunn
 \bibitem{raia} \emph{Dimensionality Reduction By Learning an Invariant Mapping} Raia Hadsell, Sumith Chopra, Yann Le Cunn
 \bibitem{kenji} \emph{A similarity-based neural network for facial expression analysis} Kenji Suzuki , Hiroshi Yamada , Shuji Hashimoto
