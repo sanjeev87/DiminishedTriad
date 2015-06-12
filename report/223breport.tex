@@ -27,7 +27,7 @@
 \begin{document}
 
 %%%%%%%%% TITLE
-\title{Diminished Triad : Consistent Hashing in Redis}
+\title{Diminished Triad: Consistent Hashing in Redis}
 
 %% TODO: Have to figure out how to add multiple authors
 \author{Pallavi Agarwal, Manindra Kumar Moharana, Sanjeev Jagannatha Rao\\
@@ -52,20 +52,21 @@ Diminished Triad is a (partial) diminished implementation of chord by the three 
 While Redis offers an extremely fast key value cache, its design suffers from some major drawbacks. Redis does not support consistent hashing, the slaves of a particular master are only aware of the master that they are replicating and unaware of the state of the rest of the system. Redis also does not support automatic migration of keys when a new node joins or readjustment of responsibilities when a node fails. Diminished Triad aims to address these drawbacks of Redis at the cost of an additional layer of indirection and its associated overheads.
 
 \section{Introduction}
-"Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{intro} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has r backups, it can support at most r random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
+``Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{intro} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has r backups, it can support at most r random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
 
-In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the dataset to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
+In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the data to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
 
 In Diminished Triad (DT), we hope to provide a fault tolerant systems using Redis backends that improves on several drawbacks of the existing Redis system described earlier. First,  DT follows a consistent hashing system similar to Chord \cite{chord}. It hashes every backed and keys to a position on the ring. Second, DT automatically moves keys between nodes every time a node joins or leaves the system. Third, DT system, like chord is completely distributed and no node is more important that the other. 
 
-DT maintains two invariants
+DT maintains two invariants:
 \begin{enumerate}
   \item Each node is the master for all the keys that hash between its predecessor and itself.
-  \item All the data that a node is responsible for ( keys for which it is the master ) is replicated in the r nodes that follow it on the ring.
+  \item All the data that a node is responsible for (keys for which it is the master) are replicated in the r nodes next to it on the ring (in clockwise order).
 \end{enumerate}
 Every node is thus a master for some of the keys and is a backup for the r nodes that precede it. Every time a node is added to the system or a node fails and leaves the system, the keys are redistributed amongst all the backends to maintain the two invariants.
 
 The rest of the paper is organized as follows. Section \ref{design} contains the detailed design of Diminished Triad. This section mentions the various components of DT, their individual roles, the APIs used to communicate between these components. Section \ref{implementation} provides the implementation details of DT. Section \ref{evaluation} provides various metrics that measure the performance of Diminished Triad. This section discusses the relative merits and demerits of Diminished Triad over off the shelf Redis.
+
 
 \section{Design} \label{Design}
 We first define several terms that will be helpful in describing the system. 
@@ -82,9 +83,17 @@ We first define several terms that will be helpful in describing the system.
    \item DTSentinel -  The DTSentinel listens to notifications from the sentinel for any changes like a node leaving the system or joining the system and takes appropriate action in each case to maintain the DT system invariants.
 \end{enumerate}
 
+
+
 \subsection{System Layout}
 Every node runs a Redis Backend and a DTInstance. All DTInstances are identical and none of them are more important than the other. A client can talk to any DTInstance using the DTClientAPI. The DTClient will forward the request to the appropriate Redis Backend using the DTServerAPI. Note that the Redis Backend servicing the client's request may or may not be on the same machine as the DTInstance.
 At the moment we have a single Sentinel and DTSentinel instance in our system. We can make our system tolerant to failures of the Sentinel and DTSentinel with minor configuration changes to the Sentinel configuration. The section \ref{fwork} on future work briefly mentions how this can be accomplished. Without loss of generality we will be discussing the system with just one instance of Sentinel and DTSentinel and assume them to be free from failure. Figure \ref{design} shows a typical set for Diminished Triad.
+
+\begin{figure*}[htb]
+  \centering
+  \includegraphics[scale=0.75]{impl3.pdf}
+  \caption{System Design. The solid lines represent the parts visible to the user. The dashed lines represent the parts hidden from the user.}
+\end{figure*}
 
 \subsection{DTClientAPI}
 Diminished Triad exposes the following functions to the user. This is a subset of the functions exported by the Redis Backend in the DTServerAPI. A complete implementation of Diminished Triad will ideally expose every single function exported by the Redis Backend. We have limited our scope to the functions listed below.
@@ -120,21 +129,22 @@ The DTSentinel listens to notifications from the Sentinel. Every time a node fai
 
 \subsection{Data Resharding for new/failed nodes}
 
-Whenever an existing node fails or a new node joins the ring, our system performs automatic data resharding. This process is explained in the next sections, with 2 backups per node.
+Whenever an existing node fails or a new node joins the ring, our system performs automatic data resharding. This is significant improvement over the redis cluster system. In redis cluster, redis-trib utility is used to add new nodes. The redis-trib utility provides the system administrator to manually move hash slots from an existing node to the new node. Redis cluster does not offer any automation for this process. The sections below explain the resharding mechanism when a node fails or a new node joins in diminished triad. 
 
-\begin{itemize}
-	\item \textbf{Node Failure:} 
-\end{itemize}
+\subsubsection{Node Failure}
+Figure \ref{handledead} shows the resharding steps when a redis backend fails. For the purposes of this section, we assume our system is configured to have two backups for every master. The initial configurations of the system is shown inside the chord ring. M represents a particular master, B1 and B2 its two backups, M-1 and M-2 its two predecessors. In the figure, M is assumed to have failed. The new configuration after M fails is shown outside the chord ring. In order to get to the configuration and maintain the two Diminished Triad invariants, we need to perform 3 data migrations. In general, if we have r backups, we need to perform r + 1 data migrations. Each of these data migrations is shown by an arrow in figure \ref{handledead}. The arrow originates along a section of the chord ring and terminates at a redis backed. The arrow indicates that a copy of all the keys that are hashed to that section of the chord ring have to be migrated to the redis backed that the arrow is pointing to from a redis backend that has all the keys that are being migrated in a consistent state. For example, when M fails, we will move keys for which it was the master , i.e. the keys that originally hashed between M and M-1 to redis backend B2. Since B1 was originally a backup of M, it will have this data and all this data will be migrated from the original B1 to the new reconfigured B2. This data migration is shown by the arrow A2 that originates between the original M and original M-1 redis backends. Similarly we move data corresponding to each arrow A1, A2 and A3. Once data migrations is completed, the Diminished Triad invariants are guaranteed to be restored after the node failure.
 
+\subsubsection{Node Join}
+Similarly, when a node joins, if the system is configured to have r backups,  a set of r+1 data migrations is sufficient to bring the node into the system and restore the Diminished Triad invariants. As in the previous section, assume the system is configured to have two backups for every master for the rest of this discussion. Figure \ref{handlejoin} shows the data migration that is carried out when a new node joins. Th new node M is the master for all the keys that are hashed between M and M-1. B1 was the master for these keys before M joined. This data is hence moved from B1 to M. This is indicated by the arrow A1 in figure \ref{handlejoin}. 
 
-Figure \ref{handledead} shows the resharding steps when a redis backend fails. For the purposes of this section, we assume our system is configured to have two backups for every master. The initial configurations of the system is shown inside the chord ring. M represents a particular master, B1 and B2 its two backups, M-1 and M-2 its two predecessors. In the figure, M is assumed to have failed. The new configuration after M fails is shown outside the chord ring. In order to get to the configuration and maintain the two Diminished Triad invariants, we need to perform 3 data migrations. In general, if we have r backups, we need to perform r + 1 data migrations. Each of these data migrations is shown by an arrow in figure \ref{handledead}. The arrow originates along a section of the chord ring and terminates at a redis backed. A copy of all the keys that are hashed that section of the chord ring have to migrated to the redis backed that the arrow is pointing to from a redis backend that has all the keys that are being migrated. For example, when M fails, we will move keys for which it was the master , i.e. the keys that originally hashed between M and M-1 to redis backend B2. Since B1 was originally a backup of M, it will have this data and all this data will be migrated from the original B1 to the new reconfigured B2. This data migration is shown by the arrow at originated between the original M and original M-1 redis backends. Similarly we move data corresponding to each of those arrows. Once data migrations is completed, the Diminished Triad invariants would have been restored after the failure.
+Additionally, the new node M also servers the first backup for M-1 and the second backup for node M-2. Data for which node M-1 is the master is moved from node M-1 to node M. This is indicated by arrow A2 in figure \ref{handlejoin}. Data for which node M-2 is the master is also moved from node M-2 to node M and this indicated by arrow A3 in figure \ref{handlejoin}.
 
-
-Similarly, when a node joins, if the system is configured to have r backups,  a set of r+1 data migrations is sufficient to bring the node into the system and restore the Diminished Triad invariants. Figure \ref{handlejoin} shows the data migration that is carried out when a new node joins. 
+\subsubsection{Handling Writes During Resharding}
+Redis can persist data by either dumping the dataset to disk every once in a while, or by appending each command to a log. We use the log generated by redis to check if there have been any writes while the data is being migrated. Any new entry in the log implies a new write. All these changes are applied and the migration is deemed complete only when there are no more changes to apply. A new node is allowed into the system only after migration is complete. This method has certain drawbacks. First, an adversary can tailor its writes to target a specific backend by selecting specific keys and can delay a node from joining the system. Second, any write that occurs between the last comparison of the logs to the time the new node joins the system can cause issues. Due to lack of time we did not remedy this issue as it is a rather unlikely event. However, we suggest some methods to handle this issue in the section \ref{futurework} on future work.
 
 \begin{figure}[hbt]
   \centering
-  \includegraphics[scale=0.4]{handle_dead}
+  \includegraphics[scale=0.6]{handle_dead.pdf}
   \caption{Data Migration During Failures}
   \label{handledead}
 \end{figure}
@@ -142,7 +152,7 @@ Similarly, when a node joins, if the system is configured to have r backups,  a 
 
 \begin{figure}[hbt]
   \centering
-  \includegraphics[scale=0.4]{handle_join}
+  \includegraphics[scale=0.6]{handle_join.pdf}
   \caption{Data Migration During Node Join}
   \label{handlejoin}
 \end{figure}
@@ -150,11 +160,6 @@ Similarly, when a node joins, if the system is configured to have r backups,  a 
 
 \section{Implementation} \label{implementation}
 % DT_Server, DT Sentinel, redis-py, spyne
-\begin{figure*}[htb]
-  \centering
-  \includegraphics[scale=0.6]{impl1}
-  \caption{svg image}
-\end{figure*}
 
 
 We used Python 2.7 to implement the DT Server, DT Client and DT Sentinel. Python was chosen because of its flexibility and ability to prototype and iterate faster. 
@@ -181,34 +186,50 @@ We also wrote scripts for evaluating the performance of the system. These script
 
 \section{Evaluation} \label{evaluation}
 
+\subsection{Comparison with Redis}
+\begin{figure}[hbt]
+ \centering
+ \includegraphics[scale=0.36]{bar_graph}
+ \caption{Time taken for 'set' operations on Redis vs DT}
+ \label{redisvsDT}
+\end{figure}
+
+We performed the \textit{set} operation on both Redis and DT for a number of keys.The setup consisted of 10 Redis servers, 3 backups in case of DT and no slaves. We used the Redis-py library to connect to the Redis backends. The results for the experiment are shown in Fig.\ref{fig:redisvsDT} and it can be seen that the time taken by DT is more than than the time taken by Redis. We identified 3 main reasons for the overhead of 40\% that DT incurs:\\
+\begin{enumerate}
+ \item DT has an additional layer through which all requests are routed to the correct server. In case of Redis, the client is sent a \textit{redirect} message to the client. This message consists of the address for a different server which has the hash slot to which the key should be mapped. The client then reissues the request to the new server and the set completes. Even though there may be a redirect issued in this case, transfer of messages between instances in case of DT and marshalling and unmarshalling the request result in an overhead.
+ \item The Redis-py library has a class called ConnectionPools which manages a set of Connection instances and it ships with two types of Connections. The default, Connection, is a normal TCP socket based connection. The UnixDomainSocketConnection allows for clients running on the same device as the server to connect via a unix domain socket. Since we have no such provision in case of DT, we require new connections to the servers every time we service a request. A Connection Pool-like optimization would reduce the overhead when consecutive requests are made in a short span of time.
+ \item In Redis, if a master dies immediately after a write is performed on the master but the background process has not yet synchronized this write with the slaves, the data is lost. We tried to address this problem by synchronously performing the writes on all backups and then returning a response to the client. To counter this, we could write to logs first and then simultaneously write to all servers(primary and backups) using a background process, similar to the one that Redis has. The lack of slaves set up for this experiment have no impact for Redis because the updates to slaves are made asynchronously and the measured time would not change.
+\end{enumerate}
+
+
 \subsection{Comparing Fault Tolerance and Probability of Losing Data between DT and Redis}
 Consider a system with \(N\) nodes and \(r\) backups. Assuming infinite capacity at each node and sufficient time in between failures, DT can handle \(N-1\) node failures. Under more practical considerations (just sufficient capacity, network bandwidth etc.), system is guaranteed to handle \(N - r - 1\) random node failures and still maintain \(r\) copies of all data.
 An off the shelf redis cluster system with \(r\) backups can loose data with \(r + 1\) targeted node failures as the backups are unaware of anything outside the master that they are replicating.
 
-Lets assume that all nodes can fail with equal probability p. In the redis cluster system, assume a master has failed. 
-\begin{equation}
-\label{xx}
-\begin{split}
-Pr(Losing Data) = Pr(Failure of All Its Backups)\\
-Pr(Failure of All Its Backups) = p* r / (N - 1)\\
-Pr(Losing Data) = p*r/(N-1) * p*(r-1)/(N-2) *\\
- p*(r-2)/(N-3) * ... * p/(N-r)\\
-=p^{k}*r!*(N-r-1)!/(N-1)!\\
-\end{split}
-\end{equation}
+We assume that all nodes can fail with equal probability p. In the redis cluster system, assume a master has failed. 
+%\begin{equation}
+%\label{xx}
+%\begin{split}
+$$\textrm{Pr(Losing Data)}= \textrm{Pr(Failure of All Its Backups)}$$
+$$\textrm{Pr(Failure of All Its Backups)} = \frac{pr }{(N - 1)}$$
+$$\textrm{Pr(Losing Data)} =\frac{pr}{(N-1)} \frac{p(r-1)}{(N-2)}  \frac{p(r-2)}{(N-3)}  \dots  \frac{p}{(N-r)}$$
+$$=\frac{p^{r}r!(N-r-1)!}{(N-1)!}$$
+%\end{split}
+%\end{equation}
 
-Lets compute the probability of losing data in the Diminished Triad System. DT is assumed to be fault tolerant to N - r - 1 random node failures.
-\begin{equation}
-\label{xx}
-\begin{split}
-Pr(Losing Data) = Pr(N - r  Node Failures)\\
-Pr(N - r  Node Failures) \\
-= p/N * p/(N-1) * p/(N-2) * ... * p/(N-r-1)\\
-=p^{N-r}*(N-r-2)!/(N)!\\
-\end{split}
-\end{equation}
+We compute the probability of losing data in the Diminished Triad System. DT is assumed to be fault tolerant to $N - r - 1$ random node failures.
+%\begin{equation}
+%\label{xx}
+%\begin{split}
+$$\textrm{Pr(Losing Data)}= \textrm{Pr(N - r  Node Failures)}$$
+$$\textrm{Pr(N - r  Node Failures)} = \frac{p}{N} \frac{p}{(N-1)} \dots \frac{p}{(N-r-1)}$$
+$$=\frac{p^{N-r}(N-r-2)!}{(N)!}$$
+%\end{split}
+%\end{equation}
 
-The probability of losing data is significantly lower in DT as compared to Redis Cluster.
+The ratio of Pr(Losing Data with DT) to Pr(Losing Data with Redis cluster) is:
+
+$$\frac{p^{N - 2r}}{N(N-r-2)} \approx 0 \hskip 2mm \textrm{for} \hskip 2mm N \gg r, p < 1$$
 
 \subsection{Consistent Hashing}
 One of the big improvements that DT offers over Redis Cluster is consistent hashing. We would like our consistent hashing scheme to have following properties suggested in Chord \cite{chord}.
