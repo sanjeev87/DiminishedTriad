@@ -163,13 +163,13 @@ Additionally, the new node M also servers the first backup for M-1 and the secon
 
 We used Python 2.7 to implement the DT Server, DT Client and DT Sentinel. Python was chosen because of its flexibility and ability to prototype and iterate faster. 
 
-DT Server: Each DT Server functions as a RPC server. We use the spyne rpc toolkit for python to create the RPC server. For each function in the DTClient API (get, set, append, etc.) there's a corresponding RPC function call along with the necessary parameters. RPC calls can be made by HTTP post requests, passing in the redis command and parameters as the post arguments. A DT Server has a upto date list of alive nodes in the ring. When a get/set command is received for a particular key, the server hashes the key and finds out which redis server the key is mapped to. It then forwards the request to the particular server and its backup using DT Client.
+\textbf{DT Server:} Each DT Server functions as a RPC server. We use the spyne rpc toolkit for python to create the RPC server. For each function in the DTClient API (get, set, append, etc.) there's a corresponding RPC function call along with the necessary parameters. RPC calls can be made by HTTP post requests, passing in the redis command and parameters as the post arguments. A DT Server has a upto date list of alive nodes in the ring. When a get/set command is received for a particular key, the server hashes the key and finds out which redis server the key is mapped to. It then forwards the request to the particular server and its backup using DT Client.
 
-DT Client: This the component that talks to the redis servers. Each DT Client is connected to all the redis servers in the ring. We use the redis-py python library for redis. It greatly simplifies the process of talking to a redis server by exposing all redis commands via easy to use API. When the DT Client receives a request for issuing a command for a redis server, it issues the command with the help of redis-py.
+\textbf{DT Client: }This the component that talks to the redis servers. Each DT Client is connected to all the redis servers in the ring. We use the redis-py python library for redis. It greatly simplifies the process of talking to a redis server by exposing all redis commands via easy to use API. When the DT Client receives a request for issuing a command for a redis server, it issues the command with the help of redis-py.
 
-DT CLI: To make it easy for the user to send commands to redis, we also designed a utility DT CLI which provides similar behaviour as redis-cli. User can input redis commands like set foo bar, get foo, etc. These commands are converted into a http request and sent to the DT Server. 
+\textbf{DT CLI:} To make it easy for the user to send commands to redis, we also designed a utility DT CLI which provides similar behaviour as redis-cli. User can input redis commands like set foo bar, get foo, etc. These commands are converted into a http request and sent to the DT Server. 
 
-DT Sentinel: The DT Sentinel runs in a separate process. Its task is to monitor any configuration changes in the ring and update all the active nodes about the latest configuration. The DT Sentinel is backed by the redis sentinel which is a special sentinel mode of operation of a redis server. In sentinel mode, a redis server doesn't store any key data but monitors other redis servers and can send push notifications on configuration change. DT Sentinel starts up a redis sentinel and subscribes to status change notifications. Any time a node leaves or joins the ring, DT sentinel gets the message from redis-sentinel. DT Sentinel then performs any necessary data migration between nodes and finally sends the latest node configuration to all nodes in the ring.
+\textbf{DT Sentinel:} The DT Sentinel runs in a separate process. Its task is to monitor any configuration changes in the ring and update all the active nodes about the latest configuration. The DT Sentinel is backed by the redis sentinel which is a special sentinel mode of operation of a redis server. In sentinel mode, a redis server doesn't store any key data but monitors other redis servers and can send push notifications on configuration change. DT Sentinel starts up a redis sentinel and subscribes to status change notifications. Any time a node leaves or joins the ring, DT sentinel gets the message from redis-sentinel. DT Sentinel then performs any necessary data migration between nodes and finally sends the latest node configuration to all nodes in the ring.
 
 Data Migration details: 
 
@@ -238,36 +238,70 @@ For any set of N nodes and K keys, with high probability, the following is true.
 \item When a \((N+1)^{th}\) node joins or leaves the network, the responsibility for O\((K/N)\) keys changes the hands. 
 \end{enumerate}
 
-\begin{figure}[ht]
-\centering
-\subfigure[Migration with 10 Nodes]{%
-  \includegraphics[scale=0.50]{10.png}
-\label{fig:subfigure10n}}
+%\begin{figure*}[t!]
+%\subfigure[Migration with 10 Nodes]{%
+%  \includegraphics[scale=0.50]{10.png}
+%\label{fig:subfigure10n}}
+%
+%\subfigure[Migration with 20 Nodes]{%
+%  \includegraphics[scale=0.50]{20.png}
+%\label{fig:subfigure20n}}
+%
+%\subfigure[Migration with 30 Nodes]{%
+%  \includegraphics[scale=0.50]{30.png}
+%\label{fig:subfigure30n}}
+%
+%\subfigure[Migration with 40 Nodes]{%
+%  \includegraphics[scale=0.50]{40.png}
+%  \label{fig:subfigure40n}}
+%\label{fig:conhashing}
+%\end{figure*}
 
-\subfigure[Migration with 20 Nodes]{%
-  \includegraphics[scale=0.50]{20.png}
+\begin{figure}[hbt]
+ \centering
+ \includegraphics[scale=0.50]{10.png}
+ \caption{Migration with 10 Nodes}
+\label{fig:subfigure10n}
+\end{figure}
+
+\begin{figure}[hbt]
+ \centering
+ \includegraphics[scale=0.50]{20.png}
+ \caption{Migration with 20 Nodes}
 \label{fig:subfigure20n}}
+\end{figure}
 
-\subfigure[Migration with 30 Nodes]{%
-  \includegraphics[scale=0.50]{30.png}
-\label{fig:subfigure30n}}
+\begin{figure}[hbt]
+ \centering
+ \includegraphics[scale=0.50]{30.png}
+ \caption{Migration with 30 Nodes}
+\label{fig:subfigure30n}
+\end{figure}
 
-\subfigure[Migration with 40 Nodes]{%
-  \includegraphics[scale=0.50]{40.png}
-  \label{fig:subfigure40n}}
-\caption{Migration Of Keys On Join}
-\label{fig:conhashing}
+\begin{figure}[hbt]
+ \centering
+ \includegraphics[scale=0.50]{40.png}
+ \caption{Migration with 40 Nodes}
+\label{fig:subfigure40n}
 \end{figure}
 
 Figure \ref{fig:conhashing} shows a box plot of number of keys that were migrated when a new node joins with a certain number of existing nodes and keys in the system with measurements from several runs of the experiment with the same initial conditions. For example, in figure \ref{fig:subfigure10n} the system had 10 nodes. We measured the number of keys that were migrated when an eleventh node joined the system. We generated keys at random and stored data in the system. The x-axis shows the number of keys that were in the system when the eleventh node joined the system. 
 
 The black line shows the value of \(K/N\) where \(K\) is the number of keys in the system and \(N\) is the number of nodes in the system. The black line helps compare the performance of our consistent hashing scheme with our theoretical targets for the system described above. The number of key migrations is consistently below the black line. As expected the variability in the number of keys migrated reduced as the number of keys and the number of nodes in the system increases.
 
+\section{Future Work} \label{futurework}
+\begin{enumerate}
+\item Sentinel support: The Redis Sentinel is designed to run in a configuration where there are multiple Sentinel processes cooperating together. The probability of false positives is lowered because multiple sentinels will detect failure and if the quorum which is the number of Sentinels that need to agree about the fact the master is not reachable, is present, a failover is authorized immediately as opposed to after a delay in the case of a single sentinel. A similar approach for DTSentinels can be used and handleJoin or handleLeave in case of a node joining or leaving can be triggered quickly. Also, DTSentinel here being the only sentinel, becomes the single point of failure. It is proved that at least three Sentinel instances are needed for a robust deployment**ref to sentinel page here** so that should be the minimum number of DTSentinels present as well. This would only make the system more fault tolerant but also would reduce the delay between server failure and its detection.
+
+\item Improved logging mechanisms: Currently we use the logs to detect writes happening during migration. The incremental updates to the logs are used to find if there were any operations performed on the server. Better methods to obtain these increments would decrease the migration time. An approach that combines the Harp**ref to harp** method of logging along with timestamps to mark the actions, would suit our purpose as we would be able to extract operations that have occurred after a certain timestamp and apply them to the new server. Also, in case of synchronous writes to the backends, we could write to the log and have a background process update the primary and the backends.
+
+\item Overhead related improvements: Python is a parsed language and is relatively slower than C. An implementation in a lower-level language would boost the system throughput as the processing time would decrease. Connection pools can be used to avoid reconnecting to the same server again.
+
+\item serverCron() performs a number of periodic tasks for Redis, including verbose logging of database size and connected clients, resizing hash tables, closing idle/timed-out client connections, performing any post-background save or AOF rewrite cleanup, kicking off a background save if the save conditions as configured have been met, calculating LRU information and dealing with expired keys. All these features could be a valuable addition to DT. 
+\end{enumerate}
+
 \section{Conclusions} \label{conclusions}
 conclusion and summary design here
-
-\section{Future Work} \label{futurework}
-future work here
 
 \section{Acknowledgments} \label{acknowledgments}
 future work here
