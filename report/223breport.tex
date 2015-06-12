@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{subfigure}% in preamble
 
 % Include other packages here, before hyperref.
 
@@ -55,7 +56,7 @@ While Redis offers an extremely fast key value cache, its design suffers from so
 
 In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the dataset to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
 
-In Diminished Triad (DT), we hope to provide a fault tolerant systems using Redis backends that improves on several drawbacks of the existing Redis system described earlier. First,  DT follows a consistent hashing system similar to Chord \cite{Chord}. It hashes every backed and keys to a position on the ring. Second, DT automatically moves keys between nodes every time a node joins or leaves the system. Third, DT system, like chord is completely distributed and no node is more important that the other. 
+In Diminished Triad (DT), we hope to provide a fault tolerant systems using Redis backends that improves on several drawbacks of the existing Redis system described earlier. First,  DT follows a consistent hashing system similar to Chord \cite{chord}. It hashes every backed and keys to a position on the ring. Second, DT automatically moves keys between nodes every time a node joins or leaves the system. Third, DT system, like chord is completely distributed and no node is more important that the other. 
 
 DT maintains two invariants
 \begin{enumerate}
@@ -149,25 +150,60 @@ Consider a system with N nodes and r backups. Assuming infinite capacity at each
 An off the shelf redis cluster system with r backups can loose data with r + 1 targeted node failures as the backups are unaware of anything outside the master that they are replicating.
 
 Lets assume that all nodes can fail with equal probability p. In the redis cluster system, assume a master has failed. 
-\begin{equation}\label{xx}
+\begin{equation}
+\label{xx}
 \begin{split}
 Pr(Losing Data) = Pr(Failure of All Its Backups)\\
 Pr(Failure of All Its Backups) = p* r / (N - 1)\\
-Pr(Losing Data) = p*r/(N-1) * p*(r-1)/(N-2) * p*(r-2)/(N-3) * ... * p/(N-r)\\
+Pr(Losing Data) = p*r/(N-1) * p*(r-1)/(N-2) *\\
+ p*(r-2)/(N-3) * ... * p/(N-r)\\
 =p^{k}*r!*(N-r-1)!/(N-1)!\\
 \end{split}
 \end{equation}
 
 Lets compute the probability of losing data in the Diminished Triad System. DT is assumed to be fault tolerant to N - r - 1 random node failures.
-\begin{equation}\label{xx}
+\begin{equation}
+\label{xx}
 \begin{split}
 Pr(Losing Data) = Pr(N - r  Node Failures)\\
-Pr(N - r  Node Failures) = p/N * p/(N-1) * p/(N-2) * ... * p/(N-r-1)\\
+Pr(N - r  Node Failures) \\
+= p/N * p/(N-1) * p/(N-2) * ... * p/(N-r-1)\\
 =p^{N-r}*(N-r-2)!/(N)!\\
 \end{split}
 \end{equation}
 
 The probability of losing data is significantly lower in DT as compared to Redis Cluster.
+
+\subsection{Consistent Hashing}
+One of the big improvements that DT offers over Redis Cluster is consistent hashing. We would like our consistent hashing scheme to have following properties suggested in Chord \cite{chord}.
+For any set of N nodes and K keys, with high probability, the following is true.
+\begin{enumerate}
+\item Each Node is responsible for at most \(1+ \epsilon\)*K/N keys
+\item When a \(N+1\){th} node joins or leaves the network, the responsibility for O\(K/N\) keys changes the hands. 
+\end{enumerate}
+
+\begin{figure}[ht]
+\centering
+\subfigure[Migration with 10 Nodes]{%
+  \includegraphics[scale=0.50]{10.png}
+\label{fig:subfigure10n}}
+
+\subfigure[Migration with 20 Nodes]{%
+  \includegraphics[scale=0.50]{20.png}
+\label{fig:subfigure20n}}
+
+\subfigure[Migration with 30 Nodes]{%
+  \includegraphics[scale=0.50]{30.png}
+\label{fig:subfigure30n}}
+
+\subfigure[Migration with 40 Nodes]{%
+  \includegraphics[scale=0.50]{40.png}
+  \label{fig:subfigure40n}}
+\caption{Migration Of Keys On Join}
+\label{fig:conhashing}
+\end{figure}
+
+
 
 
 
@@ -346,11 +382,20 @@ In the future, I would like to train deeper networks for higher number of epochs
 \section{Acknowledgements}
 
 I would like to thank Professor Zhuowen Tu and 2Lab for providing access to their lab server with which I was able to use GPUs to speed up the training in Caffe.
- 
 
+\begin{thebibliography}{9}
+\bibitem{chord} \emph{Cord: A Scalable Peer-toPeer Lookup Protocol for Internet Applications}  Ion Stoica,
+\bibitem{chopra} \emph{Learning a similarity metric discriminatively with Application to Face Verification}  Sumith Chopra, Raia Hadsell, Yann Le Cunn
+\bibitem{raia} \emph{Dimensionality Reduction By Learning an Invariant Mapping} Raia Hadsell, Sumith Chopra, Yann Le Cunn
+\bibitem{kenji} \emph{A similarity-based neural network for facial expression analysis} Kenji Suzuki , Hiroshi Yamada , Shuji Hashimoto
+\bibitem{nimstim} \emph{NimStim Face Stimulus Set} The MacArthur Foundation Research Network on Early Experience and Brain Development
+\bibitem{imagenet} \emph{Imagenet Classification with Deep Convolutional Neural Networks} Alex Krizhevsky, Ilya Sutsekver, Geoffrey E.Hinton
+\bibitem{caffe} \emph{Caffe: Convolutional Architecture for Fast Feature Embedding} Jia, Yangqing and Shelhamer, Evan and Donahue, Jeff and Karayev, Sergey and Long, Jonathan and Girshick, Ross and Guadarrama, Sergio and Darrell, Trevor
+\end{thebibliography}
 {\small
 \bibliographystyle{ieee}
 \bibliography{egbib}
-}
+} 
+
 
 \end{document}
