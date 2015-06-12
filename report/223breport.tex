@@ -52,7 +52,7 @@ Diminished Triad is a (partial) diminished implementation of chord by the three 
 While Redis offers an extremely fast key value cache, its design suffers from some major drawbacks. Redis does not support consistent hashing, the slaves of a particular master are only aware of the master that they are replicating and unaware of the state of the rest of the system. Redis also does not support automatic migration of keys when a new node joins or readjustment of responsibilities when a node fails. Diminished Triad aims to address these drawbacks of Redis at the cost of an additional layer of indirection and its associated overheads.
 
 \section{Introduction}
-``Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{intro} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has r backups, it can support at most r random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
+``Redis is an open source, BSD licensed, advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets and bitmaps"\cite{redis} . Twitter, GitHub, Weibo, Pinterest, Snapchat, Craigslist, Digg, StackOverflow and Flickr are some of the well known companies currently using Redis. Redis prides itself on providing very fast performance and several of its design choices have been made with this primary objective. For example, Redis supports asynchronous master slave replication. However, if the master dies before the data is replicated to the slaves, that piece of data is lost. Redis backends are also either only a slave or master and can not be both. A slave replicates a particular master and is unaware of the rest of the system. If a Redis system has r backups, it can support at most r random node failures. If we loose a master and all its slaves we loose all the master's data. Redis contains 16348 key slots. Every key maps to one of these key slots. Redis does not support consistent hashing. When a system is started all the key slots are evenly distributed among the masters.  When a new node joins the system, keys need to be migrated manually to the new node.
 
 In order to achieve its outstanding performance, Redis works with an in-memory dataset. So it offers very high write and read speeds with the limitation that data sets can't be larger than memory. Being an in memory dataset, Redis can work with complicated data structures and supports several of them with very little internal complexity. Redis can persist data by either dumping the data to disk every once in a while, or by appending each command to a log. We have adopted the latter approach with our Redis backends as it works like a redo log to migrate data when a new node joins the system. 
 
@@ -231,7 +231,7 @@ The ratio of Pr(Losing Data with DT) to Pr(Losing Data with Redis cluster) is:
 $$\frac{p^{N - 2r}}{N(N-r-2)} \approx 0 \hskip 2mm \textrm{for} \hskip 2mm N \gg r, p < 1$$
 
 \subsection{Consistent Hashing}
-One of the big improvements that DT offers over Redis Cluster is consistent hashing. We would like our consistent hashing scheme to have following properties suggested in Chord \cite{chord}.
+One of the big improvements that DT offers over Redis Cluster is consistent hashing. We would like our consistent hashing scheme to have following properties suggested in Chord \cite{chord} \cite{conhash1} \cite{conhash2}.
 For any set of N nodes and K keys, with high probability, the following is true.
 \begin{enumerate}
 \item Each Node is responsible for at most \((1+ \epsilon )\)*K/N keys for some small  \( \epsilon  \)
@@ -271,19 +271,18 @@ future work here
 
 \section{Acknowledgments} \label{acknowledgments}
 future work here
+
 \begin{thebibliography}{9}
 \bibitem{chord} \emph{Chord: A Scalable Peer-toPeer Lookup Protocol for Internet Applications}  Ion Stoica, Robert Morris, David Liben Nowell, David R.Karger, M. Frans Kaashoek, Frank Dabek, and Hari Balakrishnan
-\bibitem{intro} \emph{http://redis.io}  Redis
-\bibitem{raia} \emph{Dimensionality Reduction By Learning an Invariant Mapping} Raia Hadsell, Sumith Chopra, Yann Le Cunn
-\bibitem{kenji} \emph{A similarity-based neural network for facial expression analysis} Kenji Suzuki , Hiroshi Yamada , Shuji Hashimoto
-\bibitem{nimstim} \emph{NimStim Face Stimulus Set} The MacArthur Foundation Research Network on Early Experience and Brain Development
-\bibitem{imagenet} \emph{Imagenet Classification with Deep Convolutional Neural Networks} Alex Krizhevsky, Ilya Sutsekver, Geoffrey E.Hinton
-\bibitem{caffe} \emph{Caffe: Convolutional Architecture for Fast Feature Embedding} Jia, Yangqing and Shelhamer, Evan and Donahue, Jeff and Karayev, Sergey and Long, Jonathan and Girshick, Ross and Guadarrama, Sergio and Darrell, Trevor
+\bibitem{redis} \emph{http://redis.io} Redis Documentation
+\bibitem{harp} \emph{Replication in the Harp File System}  Barbara Liskov, Sanjay Ghemawat, Robert Gruber, Paul Johnson, Liuba Shrira, Michael Williams
+\bibitem{conhash1} \emph{OceanStore: An architecture for global-scale persistent storage. In Proceedings of the Ninth international Conference on Architectural Support for Programming Languages and Operating Systems (Asplos 2000) (Boston, Ma, November 2000), Pp. 190-201} Kubiatowicz, J., Bindel, D., Chen, Y., Czerwinski, S.,
+Eaton, P., Geels, D., Gummadi, R., Rhea, S.,Weatherspoon, H., Weimer, W., Wells, C., And Zhao, B.
+\bibitem{conhash2} \emph{A scalable location service for geographic ad hoc routing. In Proceedings of the 6th ACM International Conference on Mobile Computing and Networking (Boston, Massachusetts, August 2000), pp. 120?130} Li, J., Jannotti, J., De Couto, D., Karger, D., And Morris,R.
 \end{thebibliography}
 {\small
 \bibliographystyle{ieee}
 \bibliography{egbib}
 } 
-
 
 \end{document}
